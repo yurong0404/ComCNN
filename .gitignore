@@ -1,0 +1,6 @@
+*.zip
+*.7z
+data/
+filter_dataset/
+*.pkl
+training_checkpoints/
