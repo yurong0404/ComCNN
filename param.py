@@ -1,0 +1,7 @@
+MODE = "SBT"  #normal or simple or SBT
+BATCH_SIZE = 32
+EMBEDDING_DIM = 256
+UNITS = 256
+GREEN = "\033[0;32;40m"
+RED = "\033[0;31;40m"
+RESET_COLOR = "\033[0m"
