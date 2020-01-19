@@ -27,7 +27,7 @@ The rule of valid method:
 
 PS: I regard "tester", "setter", "getter" and "constructor" as valid method
 '''
-def is_invalid_method(code, nl):   
+def is_invalid_method(code: str, nl: str):   
     tokens_parse = javalang.tokenizer.tokenize(code)
     token_len = len(list(tokens_parse))
     
@@ -88,7 +88,7 @@ Usage:
     2. "snake_case" -> ["snake", "_", "case"]
     3. "normal" -> ["normal"]
 '''
-def split_identifier(id_token):
+def split_identifier(id_token: str):
     if  "_" in id_token:
         return id_token.split("_")
     elif id_token != id_token.lower() and id_token != id_token.upper():

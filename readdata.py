@@ -70,10 +70,11 @@ def extractSBTCode(inputs : list):
     return code_voc, code_tokens
 
 
-def extractCode(code_voc: list):
+def extractCode(inputs: list):
     code_tokens = []
+    code_voc = ['<PAD>','<START>','<END>','<UNK>']
     for index, pair in enumerate(inputs):
-        if index%200 == 0 and index != 0:
+        if index%20000 == 0 and index != 0:
             print(index)
         pair = json.loads(pair)
         parsed_inputs = code_tokenize(pair['code'])
@@ -101,6 +102,10 @@ if __name__ == '__main__':
 
     input_file.close()
 
+    print('readdata:')
+    print('\tdata amount: '+str(len(code_tokens)))
+    print('\trun time: '+str(time.time()-start))
+
     code_train = token2index(code_tokens, code_voc)
     comment_train = token2index(comment_tokens, comment_voc)
     code_train = pad_sequences(code_tokens, code_voc.index('<PAD>'))
@@ -117,8 +122,5 @@ if __name__ == '__main__':
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
 
-    print('readdata:')
-    print('\tdata amount: '+str(len(code_tokens)))
-    print('\trun time: '+str(time.time()-start))
     print('size of code vocabulary: ', len(code_voc))
     print('size of comment vocabulary: ', len(comment_voc))
