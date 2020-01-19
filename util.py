@@ -153,106 +153,6 @@ def filter_dataset(path_list, save_path):
     return len(train_output), len(test_output)
 
 
-'''
-Parameters:
-    path: the path of the data you want to read
-    code_voc: code vocabulary, the data type is list
-    comment_voc: comment vocabulary, the data type is list
-    mode: "simple" or "normal"
-Return values:
-    code_tokens, comment_tokens: 2-dimension list, store the code and comment into list, snippet by snippet
-    code_voc, comment_voc: the all vocabularies in the file of the path, data type is list
-Note:
-    It hasn't used SBT in DeepCom.
-TODO:
-    Change the rare words in comments into other common words via pre-trained embedding
-'''
-def readdata(path, code_voc, comment_voc):
-    input_file = open(path)
-    inputs = input_file.readlines()
-
-    code_tokens = []          # code_tokens = ['<START>', '<Modifier>', 'public', '<Identifier>',....]
-    comment_tokens = []       # comment_tokens = []
-
-    start = time.time()
-    
-    #=============== extract comment part of the snippet ==========================
-    print("comment tokenizing...")
-    for index, pair in enumerate(inputs):
-        pair = json.loads(pair)
-        tokens = nltk.word_tokenize(pair['nl'])
-        tokens.append('<END>')
-        comment_tokens.append(tokens)
-        for x in tokens:
-            if x not in comment_voc:
-                comment_voc.append(x)
-    
-    # =============== extract the code part of the snippet =========================
-    if MODE=="SBT":
-        token_count = dict()
-
-        # count the code tokens
-        print("counting tokens...")
-        for index, pair in enumerate(inputs):
-            if index%20000 == 0 and index != 0:
-                print(index)
-            pair = json.loads(pair)
-            parsed_inputs = code_tokenize(pair['code'])
-            
-            inputs[index] = parsed_inputs
-            if len(parsed_inputs) == 0:  # error-handling due to dirty data when SBT mode
-                continue
-            
-            for x in parsed_inputs:
-                if x not in token_count:
-                    token_count[x] = 1
-                else:
-                    token_count[x] += 1
-
-        # select most frequency 30000 voc
-        typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
-        code_voc.extend(typename)
-        for w in sorted(token_count, key=token_count.get, reverse=True)[:30000-len(code_voc)]:
-            code_voc.append(w) 
-            
-        print('token processing...')
-        # <SimpleName>_extractFor -> <SimpleName>, if <SimpleName>_extractFor is outside 30000 voc
-        for index, parsed_inputs in enumerate(inputs):
-            if index%20000 == 0 and index != 0:
-                print(index)
-            if len(parsed_inputs) == 0:  
-                continue
-            for index2 in range(len(parsed_inputs)):
-                if parsed_inputs[index2] not in code_voc:
-                    tmp = parsed_inputs[index2].split('_')
-                    if len(tmp) > 1 and tmp[0] in typename:
-                        parsed_inputs[index2] = tmp[0]
-                    else:
-                        parsed_inputs[index2] = "<UNK>"
-            code_tokens.append(parsed_inputs)
-            
-
-    elif MODE == "simple" or MODE == "normal":
-        print("code tokenizing...")
-        for index, pair in enumerate(inputs):
-            if index%20000 == 0 and index != 0:
-                print(index)
-            pair = json.loads(pair)
-            parsed_inputs = code_tokenize(pair['code'])
-
-            for x in parsed_inputs:
-                if x not in code_voc:
-                    code_voc.append(x)
-            code_tokens.append(parsed_inputs)
-        
-
-    print('readdata:')
-    print('\tdata amount: '+str(len(code_tokens)))
-    print('\trun time: '+str(time.time()-start))
-
-    input_file.close()
-    return code_tokens, comment_tokens, code_voc, comment_voc
-
 
 '''
 Usage:
@@ -361,13 +261,6 @@ def code_to_index(inputs, code_voc, max_length_inp):
 
     return inputs
 
-
-
-# function for plotting the attention weights
-def plot_attention(attention, sentence, predicted_sentence):
-    sns.set()
-    fig, ax = plt.subplots(figsize=(20,10)) 
-    sns.heatmap(attention, xticklabels=sentence, yticklabels=predicted_sentence, ax=ax)
     
 
 def code_tokenize(code):

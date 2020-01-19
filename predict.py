@@ -34,22 +34,24 @@ def read_testset():
     
     return test_inputs, test_outputs
 
-print("Reading "+MODE+" model...")
-code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_pkl()
-encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-encoder, decoder = read_model(encoder, decoder)
-test_inputs, test_outputs = read_testset()
 
-while(1):
-    print(RED+"\n"+"="*80+RESET_COLOR)
-    index = int(input("code number: "))
-    if index == -1:
-        break
-    print(GREEN+"\nCode:"+RESET_COLOR)
-    print(test_inputs[index])
-    print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
-    predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-    print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-    predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-    print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
+if __name__ == '__main__':
+    print("Reading "+MODE+" model...")
+    code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_pkl()
+    encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    encoder, decoder = read_model(encoder, decoder)
+    test_inputs, test_outputs = read_testset()
+
+    while(1):
+        print(RED+"\n"+"="*80+RESET_COLOR)
+        index = int(input("code number: "))
+        if index == -1:
+            break
+        print(GREEN+"\nCode:"+RESET_COLOR)
+        print(test_inputs[index])
+        print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
+        predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+        print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
+        predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
+        print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)

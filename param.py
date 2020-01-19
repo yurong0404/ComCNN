@@ -1,4 +1,4 @@
-MODE = "SBT"  #normal or simple or SBT
+MODE = "simple"  #normal or simple or SBT
 BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256
