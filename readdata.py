@@ -4,7 +4,7 @@ from param import *
 
 '''
 This script reads the dataset and transforms them into vocabulary and data which can be trained directly. 
-Finally, save the file as a pkl file, and then you can directly read the pkl file to save preprocessing time.
+Finally, save the object as a pkl file, and then you can directly read the pkl file to save preprocessing time.
 TODO:
     Change the rare words in comments into other common words via pre-trained embedding
 '''

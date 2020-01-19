@@ -2,7 +2,6 @@ import javalang
 import json
 import re
 import time
-import random
 import nltk
 #nltk.download('punkt')
 import numpy as np
@@ -13,30 +12,6 @@ import matplotlib.pyplot as plt
 import math
 import seaborn as sns
 from param import *
-
-
-'''
-Function：
-    Input the code token list, comment string，and return whether it's invalid
-The rule of valid method:
-    1. code token size <= 350
-    2. LOC <= 40
-    3. One-sentence-comment（I hope model generate only one sentence.
-       If training data consist multi-sentence comment, the effect will be bad and the first sentence only can not
-       properly describe the functionality of the method）
-
-PS: I regard "tester", "setter", "getter" and "constructor" as valid method
-'''
-def is_invalid_method(code: str, nl: str):   
-    tokens_parse = javalang.tokenizer.tokenize(code)
-    token_len = len(list(tokens_parse))
-    
-    if token_len > 350 or len(code.split('\n')) > 40:
-        return True
-    if len(nl.split('.')) != 1 or len(nltk.word_tokenize(nl)) > 30:
-        return True
-    else :
-        return False
     
     
 '''
@@ -97,61 +72,6 @@ def split_identifier(id_token: str):
     else:
         return [id_token]
 
-    
-    
-'''
-Usage:
-    1. input the list of train, test, valid dataset
-    2. filter the dataset, split it to train, test set and save as the smaller dataset.
-    3. return the amount of the data from smaller datasets.
-Example:
-    filter_dataset(['./data/train.json', './data/test.json'], './data')
-Note:
-    The filter method is different from the method in DeepCom, because I have no idea how DeepCom did.
-    It doesn't make sense that DeepCom could filter so many data via the method mentioned in its paper.
-'''
-def filter_dataset(path_list, save_path):
-    
-    inputs = []
-    for path in path_list:
-        input_file = open(path)
-        inputs.extend(input_file.readlines())
-        input_file.close()
-    outputs = []
-    
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-        
-    output_train_file = open(save_path+'/simplified_train.json', "w")
-    output_test_file = open(save_path+'/simplified_test.json', "w")
-    
-    print('Original total: '+str(len(inputs)))
-    for pair in inputs:
-        pair = json.loads(pair)
-        if is_invalid_method(pair['code'], pair['nl']):
-            continue
-        outputs.append(json.dumps(pair))
-
-    random.shuffle(outputs)
-    print('Final total: '+str(len(outputs)))
-    print('Data shuffle complete')
-    train_index = int(len(outputs)*0.9)
-    test_index = int(len(outputs)-1)
-    train_output = outputs[:train_index]
-    test_output = outputs[train_index+1:test_index]
-    
-    for row in train_output:
-        output_train_file.write(row+'\n')
-    output_train_file.close()
-    print('simplified train data finish writing')
-    for row in test_output:
-        output_test_file.write(row+'\n')
-    output_test_file.close()
-    print('simplified test data finish writing')
-
-
-    return len(train_output), len(test_output)
-
 
 
 '''
@@ -159,12 +79,8 @@ Usage:
     Transform the token to the index in vocabulary
     ['<START>', '<Modifier>', 'public', ..., '<Separator>', ';', '<Separator>', '}', '<END>']
     => [0, 7, 8, ..., 14, 29, 14, 30, 1]
-Parameter data type: 
-    2-dimension list
-Return data type:
-    2-dimension list
 '''
-def token2index(lst, voc):
+def token2index(lst: list, voc: list) -> list:
     for index, seq in enumerate(lst):
         seq_index = []
         for token in seq:
@@ -173,23 +89,13 @@ def token2index(lst, voc):
     return lst
 
 
-'''
-Parameters:
-    lst: the list of sequences to be padded
-    pad_data: the value you want to pad
-Return type:
-    numpy array
-'''
-def pad_sequences(lst, pad_data):
+def pad_sequences(lst: list, pad_data: int):
     maxlen = max(len(x) for x in lst)
     for index, seq in enumerate(lst):
         lst[index].extend([pad_data] * (maxlen-len(seq)))
     return np.array(lst)
 
 '''
-Parameters:
-    x: the list of data
-    batch_sz: batch size
 Return shape:
     [None, batch_sz, None]
 Example:
@@ -199,7 +105,7 @@ Example:
     ---output---
     [[1,2,3], [4,5,6], [7,8,9]]
 '''
-def getBatch(x, batch_sz):
+def getBatch(x: list, batch_sz: int):
     dataset = []
     while(len(x)>=batch_sz):
         dataset.append(x[:batch_sz])
@@ -211,28 +117,6 @@ def getBatch(x, batch_sz):
     
 def ngram(words, n):
     return list(zip(*(words[i:] for i in range(n))))
-
-
-#  bleu4 (n=4)
-def bleu(true, pred, n):
-    true = nltk.word_tokenize(true)
-    pred = nltk.word_tokenize(pred)
-    c = len(pred)
-    r = len(true)
-    bp = 1. if c > r else np.exp(1 - r / (c + 1e-10))
-    score = 0
-    
-    for i in range(1, n+1):
-        true_ngram = set(ngram(true, i))
-        pred_ngram = ngram(pred, i)
-        if len(true_ngram)==0 or len(true_ngram)==0:
-            break
-        length = float(len(pred_ngram)) + 1e-10
-        count = sum([1. if t in true_ngram else 0. for t in pred_ngram])
-        score += math.log(1e-10 + (count / length))
-    score = math.exp(score / n)  #n就是公式的Wn
-    bleu = bp * score
-    return bleu
 
 
 def code_to_index(inputs, code_voc, max_length_inp):
@@ -261,7 +145,6 @@ def code_to_index(inputs, code_voc, max_length_inp):
 
     return inputs
 
-    
 
 def code_tokenize(code):
     inputs = []
@@ -307,7 +190,8 @@ def distribution(arr):
         new_arr.append(tmp)
     return np.array(new_arr)
 
-def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
+def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, mode):
+    
     inputs = code_tokenize(code)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
     
@@ -330,6 +214,7 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
         dec_input = tf.expand_dims([predicted_id], 0)
 
     return result
+
 
 def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
     inputs = code_tokenize(code)

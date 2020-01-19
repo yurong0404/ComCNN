@@ -20,8 +20,8 @@ def read_model(encoder, decoder):
     return encoder, decoder
 
 
-def read_testset():
-    f = open('./simplified_dataset/simplified_test.json')
+def read_testset(path: str):
+    f = open(path)
     inputs = f.readlines()
     f.close()
     test_inputs = []
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     encoder, decoder = read_model(encoder, decoder)
-    test_inputs, test_outputs = read_testset()
+    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
 
     while(1):
         print(RED+"\n"+"="*80+RESET_COLOR)
