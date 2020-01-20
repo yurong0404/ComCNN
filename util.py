@@ -190,7 +190,7 @@ def distribution(arr):
         new_arr.append(tmp)
     return np.array(new_arr)
 
-def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, mode):
+def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
     
     inputs = code_tokenize(code)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
@@ -215,6 +215,48 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
 
     return result
 
+def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width):
+    can_lock = [0] * (width ** 2)
+    can_input = [''] * (width ** 2)
+    can_score = [1] * (width ** 2)
+    can_result = [''] * (width ** 2)
+
+    for i in range(width):
+        for x in range(width):
+            can_score[width*i+x] = score[i]
+            can_result[width*i+x] = result[i]
+        if lock[i] == 1:
+            for x in range(width):
+                can_lock[width*i+x] = 1
+            continue
+            
+        predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
+        dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
+        predictions = tf.nn.softmax(predictions)
+        topk_score = tf.math.top_k(predictions[0], width)[0]
+        topk_id = tf.math.top_k(predictions[0], width)[1]
+        
+        for x in range(width):
+            can_score[width*i+x] *= topk_score[x].numpy()
+            if comment_voc[topk_id[x].numpy()] == '<END>':
+                can_lock[width*i+x] = 1
+            else:
+                can_result[width*i+x] += comment_voc[topk_id[x].numpy()] + ' '
+                can_input[width*i+x] = topk_id[x].numpy()
+    return can_lock, can_score, can_result, can_input, dec_hidden
+
+def beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width):
+    sorted_index = sorted(range(len(can_score)), key=lambda k: can_score[k], reverse=True)[:width]
+    for x in range(width):
+        result[x] = can_result[sorted_index[x]]
+        score[x] = can_score[sorted_index[x]]
+        if can_lock[sorted_index[x]] == 1:
+            lock[x] = 1
+        else:
+            dec_input[x] = tf.expand_dims([can_input[sorted_index[x]]], 0)
+        dec_hidden[x] = dec_hidden[sorted_index[x]//width]
+    return lock, result, score, dec_input, dec_hidden
+
 
 def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
     inputs = code_tokenize(code)
@@ -223,64 +265,25 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     hidden_h, hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
     hidden = [hidden_h, hidden_c]
     enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
-    dec_hidden = [enc_hidden_h, enc_hidden_c]
-    dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)
-    
-    dec_input = [dec_input] * width
-    dec_hidden = [dec_hidden] * width
+    dec_hidden = [[enc_hidden_h, enc_hidden_c]] * width
+    dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
     
     result = [''] * width
     score = [1] * width
     lock = [0] * width
-    can_score = [1] * (width ** 2)
-    can_result = [''] * (width ** 2)
-    can_input = [''] * (width ** 2)
     
     for t in range(max_length_targ):
-        can_lock = [0] * (width ** 2)
-        for i in range(width):
-            for x in range(width):
-                can_score[width*i+x] = score[i]
-                can_result[width*i+x] = result[i]
-            if lock[i] == 1:
-                for x in range(width):
-                    can_lock[width*i+x] = 1
-                continue
-                
-            predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
-            dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
-            predictions = tf.nn.softmax(predictions)
-            topk_score = tf.math.top_k(predictions[0], width)[0]
-            topk_id = tf.math.top_k(predictions[0], width)[1]
-            
-            for x in range(width):
-                can_score[width*i+x] *= topk_score[x].numpy()
-                if comment_voc[topk_id[x].numpy()] == '<END>':
-                    can_lock[width*i+x] = 1
-                else:
-                    can_result[width*i+x] += comment_voc[topk_id[x].numpy()] + ' '
-                    can_input[width*i+x] = topk_id[x].numpy()
+        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width)
         
         if t == 0:
-            for x in range(width):
-                result[x] = can_result[x]
-                score[x] = can_score[x]
-                dec_input[x] = tf.expand_dims([can_input[x]], 0)
+            result[:width] = can_result[:width]
+            score[:width] = can_score[:width]
+            dec_input = [tf.expand_dims([can_input[x]], 0) for x in range(width)]
             continue
         
-        sorted_index = sorted(range(len(can_score)), key=lambda k: can_score[k], reverse=True)[:width]
-        for x in range(width):
-            result[x] = can_result[sorted_index[x]]
-            score[x] = can_score[sorted_index[x]]
-            if can_lock[sorted_index[x]] == 1:
-                lock[x] = 1
-            else:
-                dec_input[x] = tf.expand_dims([can_input[sorted_index[x]]], 0)
-            dec_hidden[x] = dec_hidden[sorted_index[x]//width]
-        
+        lock, result, score, dec_input, dec_hidden = beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width)
         if 0 not in lock:
             break
-
     return result[0]
 
 # Read the training data:

@@ -5,7 +5,7 @@ from predict import read_model, read_testset
 
 
 BLEU_N = 3    # 3 (bleu3), 4 (bleu4)
-PREDICT_METHOD = 0    # 0 (greedy search), 1 (beam search)
+PREDICT_METHOD = 1    # 0 (greedy search), 1 (beam search)
 BEAM_SEARCH_K = 3    # 3 or 5
 
 
@@ -42,10 +42,11 @@ if __name__ == '__main__':
     total_bleu = 0
     for index, test in enumerate(test_inputs):
         if PREDICT_METHOD == 0:
-            predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, MODE)
+            predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
         elif PREDICT_METHOD == 1:
+            predict = ''
             try:
-                predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, MODE, BEAM_SEARCH_K)
+                predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, BEAM_SEARCH_K)
             except:
                 print('except')
         bleu_score = bleu(test_outputs[index], predict, BLEU_N)
@@ -61,7 +62,7 @@ if __name__ == '__main__':
         checkpoint_dir = './training_checkpoints/adam-simple-256'
     elif MODE=="SBT":
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
-        
+
     if PREDICT_METHOD == 0:
         print("bleu"+str(BLEU_N)+":",round(total_bleu, 4))
         f_parameter = open(checkpoint_dir+"/parameters", "a")
