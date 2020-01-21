@@ -298,7 +298,18 @@ def read_pkl():
         with open('./simplified_dataset/train_SBT_data.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     
-    max_length_inp = max(len(t) for t in code_train)
-    max_length_targ = max(len(t) for t in comment_train)
+    return code_train, comment_train, code_voc, comment_voc
+
+def read_testset(path: str):
+    f = open(path)
+    inputs = f.readlines()
+    f.close()
+    test_inputs = []
+    test_outputs = []
+
+    for pair in inputs:
+        pair = json.loads(pair)
+        test_inputs.append(pair['code'])
+        test_outputs.append(pair['nl'])
     
-    return code_voc, comment_voc, len(code_voc), len(comment_voc), max_length_inp, max_length_targ
+    return test_inputs, test_outputs

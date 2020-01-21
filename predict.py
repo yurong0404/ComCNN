@@ -20,24 +20,13 @@ def read_model(encoder, decoder):
     return encoder, decoder
 
 
-def read_testset(path: str):
-    f = open(path)
-    inputs = f.readlines()
-    f.close()
-    test_inputs = []
-    test_outputs = []
-
-    for pair in inputs:
-        pair = json.loads(pair)
-        test_inputs.append(pair['code'])
-        test_outputs.append(pair['nl'])
-    
-    return test_inputs, test_outputs
-
-
 if __name__ == '__main__':
     print("Reading "+MODE+" model...")
-    code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_pkl()
+    code_train, comment_train, code_voc, comment_voc = read_pkl()
+    vocab_inp_size = len(code_voc)
+    vocab_tar_size = len(comment_voc)
+    max_length_inp = max(len(t) for t in code_train)
+    max_length_targ = max(len(t) for t in comment_train)
     encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     encoder, decoder = read_model(encoder, decoder)
