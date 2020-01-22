@@ -4,8 +4,6 @@ from util import *
 from param import *
 from model import *
 
-
-
 if __name__ == '__main__':
     code_train, comment_train, code_voc, comment_voc = read_pkl()
     vocab_inp_size = len(code_voc)
@@ -16,28 +14,18 @@ if __name__ == '__main__':
     BUFFER_SIZE = len(code_train)
     N_BATCH = BUFFER_SIZE//BATCH_SIZE
 
-    if BIDIRECTIONAL == 0:
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif BIDIRECTIONAL == 1:
-        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
 
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)  #tensorflow 2.0
 
     # ==== set the checkpoint =======
-    if MODE=="normal" and BIDIRECTIONAL==0:
+    if MODE=="normal":
         checkpoint_dir = './training_checkpoints/adam-normal-256'
-    elif MODE=="simple"  and BIDIRECTIONAL==0:
+    elif MODE=="simple":
         checkpoint_dir = './training_checkpoints/adam-simple2-256'
-    elif MODE=="SBT"  and BIDIRECTIONAL==0:
+    elif MODE=="SBT":
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
-    elif MODE=="normal" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-normal-biLSTM-256'
-    elif MODE=="simple" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-simple-biLSTM-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-SBT-biLSTM-256'
 
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
     checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)
@@ -49,10 +37,10 @@ if __name__ == '__main__':
 
     EPOCHS = 70
     for epoch in range(1,EPOCHS+1):
-        
         start = time.time()
         hidden_h, hidden_c = encoder.initialize_hidden_state()
         hidden = [hidden_h, hidden_c]
+
         total_loss = 0 
         code_train_batch = getBatch(code_train, BATCH_SIZE)
         comment_train_batch = getBatch(comment_train, BATCH_SIZE)

@@ -67,19 +67,20 @@ class BidirectionalEncoder(tf.keras.Model):
         self.batch_sz = batch_sz
         self.enc_units = enc_units
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-        self.forward_lstm = lstm(self.enc_units)
-        self.backward_lstm = back_lstm(self.enc_units)
-        self.bilstm = tf.keras.layers.Bidirectional(self.forward_lstm, 
-                                                    backward_layer=self.backward_lstm, 
-                                                    input_shape=(batch_sz, enc_units))
+        self.lstm = tf.keras.layers.LSTM(enc_units,
+                                        return_sequences=False, 
+                                        return_state=True, 
+                                        recurrent_activation='sigmoid', 
+                                        recurrent_initializer='glorot_uniform')
+        self.bilstm = tf.keras.layers.Bidirectional(self.lstm) 
         
-    def call(self, x, hidden):
+    def call(self, x, forward_h, forward_c, backward_h, backward_c):
         x = self.embedding(x)
-        output, state_h, state_c = self.bilstm(x, initial_state = [hidden, hidden])        
-        return output, state_h, state_c
+        output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x, initial_state = (forward_h, forward_c, backward_h, backward_c))
+        return output, forward_h, forward_c, backward_h, backward_c
     
     def initialize_hidden_state(self):
-        return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
+        return tf.zeros((self.batch_sz, self.enc_units))
 
 class BidirectionalDecoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz):
@@ -95,21 +96,23 @@ class BidirectionalDecoder(tf.keras.Model):
         self.fc = tf.keras.layers.Dense(vocab_size)
         self.W1 = tf.keras.layers.Dense(self.dec_units)
         self.W2 = tf.keras.layers.Dense(self.dec_units)
+        self.W3 = tf.keras.layers.Dense(self.dec_units)
         self.V = tf.keras.layers.Dense(1)
         
     def call(self, x, hidden, enc_output):
-        hidden_with_time_axis = tf.expand_dims(hidden[1], 1)
-        score = self.V(tf.nn.tanh(self.W1(enc_output) + self.W2(hidden_with_time_axis)))
+        forward_hidden_c = tf.expand_dims(hidden[1], 1)
+        backward_hidden_c = tf.expand_dims(hidden[3], 1)
+        score = self.V(tf.nn.tanh(self.W1(enc_output) + self.W2(forward_hidden_c) + self.W3(backward_hidden_c)))
         attention_weights = tf.nn.softmax(score, axis=1)
         context_vector = attention_weights * enc_output
         context_vector = tf.reduce_sum(context_vector, axis=1)
         x = self.embedding(x)
         x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)
-        output, state_h, state_c = self.bilstm(x)
+        output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x)
         output = tf.reshape(output, (-1, output.shape[2]))
         x = self.fc(output)
         
-        return x, state_h, state_c, attention_weights
+        return x, forward_h, forward_c, backward_h, backward_c
         
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.dec_units)), tf.zeros((self.batch_sz, self.dec_units))

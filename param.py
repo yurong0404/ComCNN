@@ -1,6 +1,6 @@
 MODE = "simple"  #normal or simple or SBT
 BIDIRECTIONAL = 1  # 0 for LSTM, 1 for bi-LSTM
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256
 GREEN = "\033[0;32;40m"

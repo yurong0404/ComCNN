@@ -215,6 +215,31 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
 
     return result
 
+def translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
+    
+    inputs = code_tokenize(code)
+    inputs = code_to_index(inputs, code_voc, max_length_inp)
+    
+    result = ''
+    
+    hidden = tf.zeros((1, UNITS))
+    enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden, hidden, hidden, hidden)
+    dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
+    dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)       
+    
+    for t in range(max_length_targ):
+        predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
+        dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
+        predicted_id = tf.argmax(predictions[0]).numpy()
+        if comment_voc[predicted_id] == '<END>':
+            return result
+        result += comment_voc[predicted_id] + ' '
+        # the predicted ID is fed back into the model
+        dec_input = tf.expand_dims([predicted_id], 0)
+
+    return result
+
+
 def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width):
     can_lock = [0] * (width ** 2)
     can_input = [''] * (width ** 2)
