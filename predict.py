@@ -1,7 +1,8 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
 from param import *
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 def read_model(encoder, decoder):
     if MODE=="normal":

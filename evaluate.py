@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
 from param import *
@@ -9,31 +11,13 @@ PREDICT_METHOD = 1    # 0 (greedy search), 1 (beam search)
 BEAM_SEARCH_K = 3    # 3 or 5
 
 
-#  bleu4 (n=4)
-def bleu(true, pred, n):
-    true = nltk.word_tokenize(true)
-    pred = nltk.word_tokenize(pred)
-    c = len(pred)
-    r = len(true)
-    bp = 1. if c > r else np.exp(1 - r / (c + 1e-10))
-    score = 0
-    
-    for i in range(1, n+1):
-        true_ngram = set(ngram(true, i))
-        pred_ngram = ngram(pred, i)
-        if len(true_ngram)==0 or len(true_ngram)==0:
-            break
-        length = float(len(pred_ngram)) + 1e-10
-        count = sum([1. if t in true_ngram else 0. for t in pred_ngram])
-        score += math.log(1e-10 + (count / length))
-    score = math.exp(score / n)  #n就是公式的Wn
-    bleu = bp * score
-    return bleu
-
-
 if __name__ == '__main__':
     print("Reading "+MODE+" model...")
-    code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_pkl()
+    code_train, comment_train, code_voc, comment_voc = read_pkl()
+    vocab_inp_size = len(code_voc)
+    vocab_tar_size = len(comment_voc)
+    max_length_inp = max(len(t) for t in code_train)
+    max_length_targ = max(len(t) for t in comment_train)
     encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     encoder, decoder = read_model(encoder, decoder)

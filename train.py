@@ -1,7 +1,9 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from param import *
 from model import *
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 
 
 if __name__ == '__main__':
@@ -14,18 +16,28 @@ if __name__ == '__main__':
     BUFFER_SIZE = len(code_train)
     N_BATCH = BUFFER_SIZE//BATCH_SIZE
 
-    encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    if BIDIRECTIONAL == 0:
+        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif BIDIRECTIONAL == 1:
+        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
 
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)  #tensorflow 2.0
 
     # ==== set the checkpoint =======
-    if MODE=="normal":
+    if MODE=="normal" and BIDIRECTIONAL==0:
         checkpoint_dir = './training_checkpoints/adam-normal-256'
-    elif MODE=="simple":
+    elif MODE=="simple"  and BIDIRECTIONAL==0:
         checkpoint_dir = './training_checkpoints/adam-simple2-256'
-    elif MODE=="SBT":
+    elif MODE=="SBT"  and BIDIRECTIONAL==0:
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
+    elif MODE=="normal" and BIDIRECTIONAL==1:
+        checkpoint_dir = './training_checkpoints/adam-normal-biLSTM-256'
+    elif MODE=="simple" and BIDIRECTIONAL==1:
+        checkpoint_dir = './training_checkpoints/adam-simple-biLSTM-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==1:
+        checkpoint_dir = './training_checkpoints/adam-SBT-biLSTM-256'
 
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
     checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)
