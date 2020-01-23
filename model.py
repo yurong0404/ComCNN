@@ -67,11 +67,7 @@ class BidirectionalEncoder(tf.keras.Model):
         self.batch_sz = batch_sz
         self.enc_units = enc_units
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-        self.lstm = tf.keras.layers.LSTM(enc_units,
-                                        return_sequences=False, 
-                                        return_state=True, 
-                                        recurrent_activation='sigmoid', 
-                                        recurrent_initializer='glorot_uniform')
+        self.lstm = lstm(self.enc_units)
         self.bilstm = tf.keras.layers.Bidirectional(self.lstm) 
         
     def call(self, x, forward_h, forward_c, backward_h, backward_c):
@@ -88,11 +84,10 @@ class BidirectionalDecoder(tf.keras.Model):
         self.batch_sz = batch_sz
         self.dec_units = dec_units
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-        self.forward_lstm = lstm(self.dec_units)
-        self.backward_lstm = back_lstm(self.dec_units)
-        self.bilstm = tf.keras.layers.Bidirectional(self.forward_lstm, 
-                                                    backward_layer=self.backward_lstm, 
-                                                    input_shape=(batch_sz, dec_units))
+        self.lstm = lstm(self.dec_units)
+        #self.forward_lstm = lstm(self.dec_units)
+        #self.backward_lstm = back_lstm(self.dec_units)
+        self.bilstm = tf.keras.layers.Bidirectional(self.lstm)
         self.fc = tf.keras.layers.Dense(vocab_size)
         self.W1 = tf.keras.layers.Dense(self.dec_units)
         self.W2 = tf.keras.layers.Dense(self.dec_units)
