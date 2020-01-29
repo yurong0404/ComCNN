@@ -254,9 +254,14 @@ def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden
             for x in range(width):
                 can_lock[width*i+x] = 1
             continue
+        
+        if BIDIRECTIONAL == 0:
+            predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
+            dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
+        elif BIDIRECTIONAL == 1:
+            predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input[i], dec_hidden[i], enc_output)
+            dec_hidden[i] = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
             
-        predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
-        dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
         predictions = tf.nn.softmax(predictions)
         topk_score = tf.math.top_k(predictions[0], width)[0]
         topk_id = tf.math.top_k(predictions[0], width)[1]
@@ -297,6 +302,33 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     score = [1] * width
     lock = [0] * width
     
+    for t in range(max_length_targ):
+        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width)
+        
+        if t == 0:
+            result[:width] = can_result[:width]
+            score[:width] = can_score[:width]
+            dec_input = [tf.expand_dims([can_input[x]], 0) for x in range(width)]
+            continue
+        
+        lock, result, score, dec_input, dec_hidden = beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width)
+        if 0 not in lock:
+            break
+    return result[0]
+
+def beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
+    inputs = code_tokenize(code)
+    inputs = code_to_index(inputs, code_voc, max_length_inp)
+
+    hidden = tf.zeros((1, UNITS))
+    enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden, hidden, hidden, hidden)
+    dec_hidden = [[enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]] * width
+    dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
+
+    result = [''] * width
+    score = [1] * width
+    lock = [0] * width
+
     for t in range(max_length_targ):
         can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width)
         
