@@ -34,12 +34,14 @@ if __name__ == '__main__':
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
+    
     if BIDIRECTIONAL==0:
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     elif BIDIRECTIONAL==1:
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    
     encoder, decoder = read_model(encoder, decoder)
     test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
 

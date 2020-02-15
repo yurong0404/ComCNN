@@ -34,7 +34,7 @@ if __name__ == '__main__':
     test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
     print('start training...')
 
-    EPOCHS = 70
+    EPOCHS = 50
     for epoch in range(1,EPOCHS+1):
         
         start = time.time()

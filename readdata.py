@@ -46,6 +46,7 @@ def SBT_OOVhandler(token_count: list, code_voc: list):
         code_voc.append(w) 
         
     # <SimpleName>_extractFor -> <SimpleName>, if <SimpleName>_extractFor is outside 30000 voc
+    typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
     for index, parsed_inputs in enumerate(inputs):
         if index%20000 == 0 and index != 0:
             print(index)

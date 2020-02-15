@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"]= '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from param import *
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     if MODE=="normal":
         checkpoint_dir = './training_checkpoints/adam-normal-256'
     elif MODE=="simple":
-        checkpoint_dir = './training_checkpoints/adam-simple2-256'
+        checkpoint_dir = './training_checkpoints/adam-simple-256'
     elif MODE=="SBT":
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
 
