@@ -16,7 +16,7 @@ def read_model(encoder, decoder):
     elif MODE=="simple" and BIDIRECTIONAL==1:
         checkpoint_dir = './training_checkpoints/adam-simple-bilstm-256'
     elif MODE=="SBT" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-SBT-256'
+        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
     
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)
     checkpoint = tf.train.Checkpoint(optimizer=optimizer,
