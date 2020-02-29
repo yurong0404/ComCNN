@@ -7,7 +7,7 @@ from param import *
 from predict import read_model, read_testset
 
 
-BLEU_N = 3    # 3 (bleu3), 4 (bleu4)
+BLEU_N = 4    # 3 (bleu3), 4 (bleu4)
 PREDICT_METHOD = 1    # 0 (greedy search), 1 (beam search)
 BEAM_SEARCH_K = 5    # 3 or 5
 

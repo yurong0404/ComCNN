@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from param import *
 
 def lstm(units):
     return tf.keras.layers.LSTM(units, 
@@ -23,10 +24,14 @@ class Encoder(tf.keras.Model):
         self.enc_units = enc_units
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
         self.lstm = lstm(self.enc_units)
+        self.dropout = tf.keras.layers.Dropout(rate=0.5)
         
     def call(self, x, hidden):
         x = self.embedding(x)
-        output, state_h, state_c = self.lstm(x, initial_state = hidden)        
+        output, state_h, state_c = self.lstm(x, initial_state = hidden)
+        if DROPOUT == 1:
+            state_h = self.dropout(state_h)
+            state_c = self.dropout(state_c)
         return output, state_h, state_c
     
     def initialize_hidden_state(self):
@@ -43,6 +48,7 @@ class Decoder(tf.keras.Model):
         self.W1 = tf.keras.layers.Dense(self.dec_units)
         self.W2 = tf.keras.layers.Dense(self.dec_units)
         self.V = tf.keras.layers.Dense(1)
+        self.dropout = tf.keras.layers.Dropout(rate=0.5)
         
     def call(self, x, hidden, enc_output):
         hidden_with_time_axis = tf.expand_dims(hidden[1], 1)
@@ -55,6 +61,9 @@ class Decoder(tf.keras.Model):
         output, state_h, state_c = self.lstm(x)
         output = tf.reshape(output, (-1, output.shape[2]))
         x = self.fc(output)
+        if DROPOUT == 1:
+            state_h = self.dropout(state_h)
+            state_c = self.dropout(state_c)
         
         return x, state_h, state_c, attention_weights
         
