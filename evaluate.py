@@ -53,18 +53,7 @@ if __name__ == '__main__':
             
     total_bleu = total_bleu / len(test_inputs)
 
-    if MODE=="normal" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-normal-256'
-    elif MODE=="simple" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-simple-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-SBT-256'
-    elif MODE=="normal" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-256'
-    elif MODE=="simple" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
+    checkpoint_dir = getCheckpointDir()
 
     if PREDICT_METHOD == 0:
         print("bleu"+str(BLEU_N)+":",round(total_bleu, 4))

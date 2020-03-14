@@ -5,18 +5,7 @@ from model import *
 from param import *
 
 def read_model(encoder, decoder):
-    if MODE=="normal" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-normal-256'
-    elif MODE=="simple" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-simple-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==0:
-        checkpoint_dir = './training_checkpoints/adam-SBT-256'
-    elif MODE=="normal" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-256'
-    elif MODE=="simple" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1:
-        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
+    checkpoint_dir = getCheckpointDir()
     
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)
     checkpoint = tf.train.Checkpoint(optimizer=optimizer,
@@ -81,7 +70,6 @@ if __name__ == '__main__':
                 else:
                     break
             code = '\n'.join(lines)
-            print(code)
             if BIDIRECTIONAL==0:
                 predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)

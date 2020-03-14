@@ -1,5 +1,6 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"]= '1'
 from util import *
 from param import *
 from model import *
@@ -19,12 +20,7 @@ if __name__ == '__main__':
 
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)  #tensorflow 2.0
 
-    if MODE=="normal":
-        checkpoint_dir = './training_checkpoints/adam-normal-biLSTM-256'
-    elif MODE=="simple":
-        checkpoint_dir = './training_checkpoints/adam-simple-biLSTM-256'
-    elif MODE=="SBT":
-        checkpoint_dir = './training_checkpoints/adam-SBT-biLSTM-256'
+    checkpoint_dir = getCheckpointDir()
 
     checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
     checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)

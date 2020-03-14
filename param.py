@@ -1,6 +1,6 @@
 MODE = "normal"  #normal or simple or SBT
-BIDIRECTIONAL = 0  # 0 for LSTM, 1 for bi-LSTM
-BATCH_SIZE = 8
+BIDIRECTIONAL = 1  # 0 for LSTM, 1 for bi-LSTM
+BATCH_SIZE = 16
 EMBEDDING_DIM = 256
 UNITS = 256
 DROPOUT = 1

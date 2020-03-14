@@ -3,6 +3,9 @@
 這是一個將程式碼透過深度學習，自動翻譯成註解的研究，目標程式碼以function為單位，而註解會說明該段function的程式邏輯
 
 This is a study that automatically translates the code into comments through deep learning. The target code is in units of functions, and the comments will explain the program logic of the function.
+
+TensorFlow version: 2.1.0
+TensorFlow.keras version: 2.2.4-tf
 ***
 
 ## filter_dataset.py

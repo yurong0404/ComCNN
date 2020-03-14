@@ -389,3 +389,30 @@ def bleu(true, pred, n):
     score = math.exp(score / n)  #n就是公式的Wn
     bleu = bp * score
     return bleu
+
+def getCheckpointDir():
+    if MODE=="normal" and BIDIRECTIONAL==0 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-normal-256'
+    elif MODE=="normal" and BIDIRECTIONAL==0 and DROPOUT==1:
+        checkpoint_dir = './training_checkpoints/adam-normal-dropout-256'
+    elif MODE=="simple" and BIDIRECTIONAL==0 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-simple-256'
+    elif MODE=="simple" and BIDIRECTIONAL==0 and DROPOUT==1:
+        checkpoint_dir = './training_checkpoints/adam-simple-dropout-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==0 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-SBT-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==0 and DROPOUT==1:
+        checkpoint_dir = './training_checkpoints/adam-SBT-dropout-256'
+    elif MODE=="normal" and BIDIRECTIONAL==1 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-256'
+    elif MODE=="normal" and BIDIRECTIONAL==1 and DROPOUT==1:
+        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-dropout-256'
+    elif MODE=="simple" and BIDIRECTIONAL==1 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-256'
+    elif MODE=="simple" and BIDIRECTIONAL==1 and DROPOUT==1:
+        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-dropout-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==1 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==1 and DROPOUT==0:
+        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-dropout-256'
+    return checkpoint_dir
