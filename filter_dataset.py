@@ -3,6 +3,7 @@ import javalang
 import nltk
 import os
 import random
+from tqdm import tqdm
 
 # Usage:
 # Read DeepCom's dataset, then filter the data through specific rules, and finally save the data as a smaller dataset
@@ -35,7 +36,7 @@ output_train_file = open(save_path+'/simplified_train.json', "w")
 output_test_file = open(save_path+'/simplified_test.json', "w")
 
 print('Original total: '+str(len(inputs)))
-for pair in inputs:
+for pair in tqdm(inputs):
     pair = json.loads(pair)
     if is_invalid_method(pair['code'], pair['nl']):
         continue
@@ -49,11 +50,11 @@ test_index = int(len(outputs)-1)
 train_output = outputs[:train_index]
 test_output = outputs[train_index+1:test_index]
 
-for row in train_output:
+for row in tqdm(train_output):
     output_train_file.write(row+'\n')
 output_train_file.close()
 print('simplified train data finish writing')
-for row in test_output:
+for row in tqdm(test_output):
     output_test_file.write(row+'\n')
 output_test_file.close()
 print('simplified test data finish writing')

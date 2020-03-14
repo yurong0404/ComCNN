@@ -1,6 +1,6 @@
 from util import *
 from param import *
-
+from tqdm import tqdm
 
 '''
 TODO:
@@ -10,7 +10,7 @@ TODO:
 def extractComment():
     comment_voc = ['<PAD>','<START>','<END>','<UNK>']
     comment_tokens = []
-    for index, pair in enumerate(inputs):
+    for index, pair in enumerate(tqdm(inputs)):
         pair = json.loads(pair)
         tokens = nltk.word_tokenize(pair['nl'])
         tokens.append('<END>')
@@ -23,9 +23,7 @@ def extractComment():
 def countCodeToken(inputs: list):
     token_count = dict()
     # count the code tokens
-    for index, pair in enumerate(inputs):
-        if index%20000 == 0 and index != 0:
-            print(index)
+    for index, pair in enumerate(tqdm(inputs)):
         pair = json.loads(pair)
         parsed_inputs = code_tokenize(pair['code'])
         inputs[index] = parsed_inputs
@@ -47,9 +45,7 @@ def SBT_OOVhandler(token_count: list, code_voc: list):
         
     # <SimpleName>_extractFor -> <SimpleName>, if <SimpleName>_extractFor is outside 30000 voc
     typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
-    for index, parsed_inputs in enumerate(inputs):
-        if index%20000 == 0 and index != 0:
-            print(index)
+    for index, parsed_inputs in enumerate(tqdm(inputs)):
         if len(parsed_inputs) == 0:  
             continue
         for index2 in range(len(parsed_inputs)):
@@ -72,9 +68,7 @@ def extractSBTCode(inputs : list):
 def extractCode(inputs: list):
     code_tokens = []
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
-    for index, pair in enumerate(inputs):
-        if index%20000 == 0 and index != 0:
-            print(index)
+    for index, pair in enumerate(tqdm(inputs)):
         pair = json.loads(pair)
         parsed_inputs = code_tokenize(pair['code'])
 
