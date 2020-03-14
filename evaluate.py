@@ -31,6 +31,7 @@ if __name__ == '__main__':
     test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
 
     total_score = 0
+    exception = 0
     for index, test in enumerate(tqdm(test_inputs)):
         if PREDICT_METHOD==0 and BIDIRECTIONAL==0:
             predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
@@ -41,13 +42,13 @@ if __name__ == '__main__':
             try:
                 predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, BEAM_SEARCH_K)
             except:
-                print('except')
+                exception += 1
         elif PREDICT_METHOD==1 and BIDIRECTIONAL==1:    
             predict = ''
             try:
                 predict = beam_search_bilstm(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, BEAM_SEARCH_K)
             except:
-                print('except')
+                exception += 1
         
         if METRIC == "BLEU3":
             score = bleu(test_outputs[index], predict, 3)
@@ -71,3 +72,5 @@ if __name__ == '__main__':
         f_parameter = open(checkpoint_dir+"/parameters", "a")
         f_parameter.write("Beam search(k="+str(BEAM_SEARCH_K)+") "+METRIC+"="+str(round(total_score, 4))+"\n")
         f_parameter.close()
+
+    print("number of exception: ", exception)
