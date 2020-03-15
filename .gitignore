@@ -3,4 +3,4 @@
 DeepCom_data/
 *.pkl
 training_checkpoints/
-simplified_dataset/
+simplified_dataset/*.pkl
