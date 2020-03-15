@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import math
 import seaborn as sns
 from param import *
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     
     
 '''
@@ -120,7 +121,10 @@ def ngram(words, n):
 
 
 def code_to_index(inputs, code_voc, max_length_inp):
-    if MODE=="simple" or MODE=="normal":
+    if len(inputs) >= max_length_inp:
+        inputs = inputs[:max_length_inp-1]
+
+    if MODE=="tok" or MODE=="symtok":
         for index, token in enumerate(inputs):
             if token not in code_voc:
                 inputs[index] = code_voc.index('<UNK>')
@@ -148,13 +152,13 @@ def code_to_index(inputs, code_voc, max_length_inp):
 
 def code_tokenize(code):
     inputs = []
-    if MODE =="simple":
+    if MODE =="tok":
         tokens_parse = javalang.tokenizer.tokenize(code)
         for token in tokens_parse:    # iterate the tokens of the sentence
             token = str(token).split(' ')
             splitted_id = split_identifier(token[1].strip('"'))    # split the camelCase and snake_case
             inputs.extend(splitted_id)
-    elif MODE == "normal":
+    elif MODE == "symtok":
         tokens_parse = javalang.tokenizer.tokenize(code)
         for token in tokens_parse:    # iterate the tokens of the sentence
             token = str(token).split(' ')
@@ -343,11 +347,11 @@ def beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length
 
 # Read the training data:
 def read_pkl():
-    if MODE=="normal":
-        with open('./simplified_dataset/train_normal_data.pkl', 'rb') as f:
+    if MODE=="symtok":
+        with open('./simplified_dataset/train_symtok_data.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
-    elif MODE=="simple":
-        with open('./simplified_dataset/train_simple_data.pkl', 'rb') as f:
+    elif MODE=="tok":
+        with open('./simplified_dataset/train_tok_data.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     elif MODE=="SBT":
         with open('./simplified_dataset/train_SBT_data.pkl', 'rb') as f:
@@ -430,28 +434,16 @@ def CIDEr(true, pred):
 
 
 def getCheckpointDir():
-    if MODE=="normal" and BIDIRECTIONAL==0 and DROPOUT==0:
-        checkpoint_dir = './training_checkpoints/adam-normal-256'
-    elif MODE=="normal" and BIDIRECTIONAL==0 and DROPOUT==1:
-        checkpoint_dir = './training_checkpoints/adam-normal-dropout-256'
-    elif MODE=="simple" and BIDIRECTIONAL==0 and DROPOUT==0:
-        checkpoint_dir = './training_checkpoints/adam-simple-256'
-    elif MODE=="simple" and BIDIRECTIONAL==0 and DROPOUT==1:
-        checkpoint_dir = './training_checkpoints/adam-simple-dropout-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==0 and DROPOUT==0:
+    if MODE=="symtok" and BIDIRECTIONAL==0:
+        checkpoint_dir = './training_checkpoints/adam-symtok-256'
+    elif MODE=="tok" and BIDIRECTIONAL==0:
+        checkpoint_dir = './training_checkpoints/adam-tok-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==0:
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==0 and DROPOUT==1:
-        checkpoint_dir = './training_checkpoints/adam-SBT-dropout-256'
-    elif MODE=="normal" and BIDIRECTIONAL==1 and DROPOUT==0:
-        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-256'
-    elif MODE=="normal" and BIDIRECTIONAL==1 and DROPOUT==1:
-        checkpoint_dir = './training_checkpoints/adam-normal-bilstm-dropout-256'
-    elif MODE=="simple" and BIDIRECTIONAL==1 and DROPOUT==0:
-        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-256'
-    elif MODE=="simple" and BIDIRECTIONAL==1 and DROPOUT==1:
-        checkpoint_dir = './training_checkpoints/adam-simple-bilstm-dropout-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1 and DROPOUT==0:
+    elif MODE=="symtok" and BIDIRECTIONAL==1:
+        checkpoint_dir = './training_checkpoints/adam-symtok-bilstm-256'
+    elif MODE=="tok" and BIDIRECTIONAL==1:
+        checkpoint_dir = './training_checkpoints/adam-tok-bilstm-256'
+    elif MODE=="SBT" and BIDIRECTIONAL==1:
         checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1 and DROPOUT==0:
-        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-dropout-256'
     return checkpoint_dir

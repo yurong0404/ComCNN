@@ -90,7 +90,7 @@ if __name__ == '__main__':
     if MODE=="SBT":
         code_voc, code_tokens = extractSBTCode(inputs)
 
-    elif MODE == "simple" or MODE == "normal":
+    elif MODE == "tok" or MODE == "symtok":
         code_voc, code_tokens = extractCode(inputs)
 
     input_file.close()
@@ -99,16 +99,19 @@ if __name__ == '__main__':
     print('\tdata amount: '+str(len(code_tokens)))
     print('\trun time: '+str(time.time()-start))
 
+    
+    print('token2index...')
     code_train = token2index(code_tokens, code_voc)
     comment_train = token2index(comment_tokens, comment_voc)
+    print('sequences padding...')
     code_train = pad_sequences(code_tokens, code_voc.index('<PAD>'))
     comment_train = pad_sequences(comment_tokens, comment_voc.index('<PAD>'))
 
     # Saving the training data:
-    if MODE=="normal":
-        pkl_filename = "./simplified_dataset/train_normal_data.pkl"
-    elif MODE=="simple":
-        pkl_filename = "./simplified_dataset/train_simple_data.pkl"
+    if MODE=="symtok":
+        pkl_filename = "./simplified_dataset/train_symtok_data.pkl"
+    elif MODE=="tok":
+        pkl_filename = "./simplified_dataset/train_tok_data.pkl"
     elif MODE=="SBT":
         pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
         

@@ -42,7 +42,7 @@ for pair in tqdm(inputs):
         continue
     outputs.append(json.dumps(pair))
 
-random.shuffle(outputs)
+#random.shuffle(outputs)
 print('Final total: '+str(len(outputs)))
 print('Data shuffle complete')
 train_index = int(len(outputs)*0.9)

@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
@@ -8,9 +8,9 @@ from predict import read_model, read_testset
 from tqdm import tqdm
 
 METRIC = "BLEU3"   # BLEU3, BLEU4, CIDEr
-PREDICT_METHOD = 0    # 0 (greedy search), 1 (beam search)
-BEAM_SEARCH_K = 3    # 3 or 5
-DATASET_LOC_LEVEL = 1  # 0 for 0~10, 1 for 10~20, 2 for 20~30, 3 for 30~40
+PREDICT_METHOD = 1    # 0 (greedy search), 1 (beam search)
+BEAM_SEARCH_K = 5    # 3 or 5
+DATASET_LOC_LEVEL = 2  # 0 for 0~10, 1 for 10~20, 2 for 20~30, 3 for 30~40
 DATASET_PATH = [
     './simplified_dataset/simplified_test_0_10.json',
     './simplified_dataset/simplified_test_10_20.json',

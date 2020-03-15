@@ -1,6 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]= '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ["CUDA_VISIBLE_DEVICES"]= '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
 from model import *
@@ -93,8 +93,5 @@ if __name__ == '__main__':
     f_parameter = open(checkpoint_dir+"/parameters", "a")
     f_parameter.write("EPOCHS="+str(epoch)+"\n")
     f_parameter.write("BATCH_SIZE="+str(BATCH_SIZE)+"\n")
-    f_parameter.write("DATA="+MODE+"\n")
-    f_parameter.write("OPTIMIZER="+"ADAM"+"\n")
-    f_parameter.write("EMBEDDING="+str(EMBEDDING_DIM)+"\n")
-    f_parameter.write("UNITS="+str(UNITS)+"\n")
+    f_parameter.write("PREPROCESS="+MODE+"\n")
     f_parameter.close()

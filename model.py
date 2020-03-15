@@ -21,9 +21,6 @@ class Encoder(tf.keras.Model):
     def call(self, x, hidden):
         x = self.embedding(x)
         output, state_h, state_c = self.lstm(x, initial_state = hidden)
-        if DROPOUT == 1:
-            state_h = self.dropout(state_h)
-            state_c = self.dropout(state_c)
         return output, state_h, state_c
     
     def initialize_hidden_state(self):
@@ -53,9 +50,6 @@ class Decoder(tf.keras.Model):
         output, state_h, state_c = self.lstm(x)
         output = tf.reshape(output, (-1, output.shape[2]))
         x = self.fc(output)
-        if DROPOUT == 1:
-            state_h = self.dropout(state_h)
-            state_c = self.dropout(state_c)
         
         return x, state_h, state_c, attention_weights
         
@@ -106,11 +100,6 @@ class BidirectionalDecoder(tf.keras.Model):
         output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x)
         output = tf.reshape(output, (-1, output.shape[2]))
         x = self.fc(output)
-        if DROPOUT == 1:
-            state_h = self.dropout(forward_h)
-            state_c = self.dropout(forward_c)
-            state_h = self.dropout(backward_h)
-            state_c = self.dropout(backward_c)
         
         return x, forward_h, forward_c, backward_h, backward_c
         

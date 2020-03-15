@@ -7,9 +7,9 @@ from param import *
 from predict import read_model, read_testset
 from tqdm import tqdm
 
-METRIC = "CIDEr"   # BLEU3, BLEU4, CIDEr
-PREDICT_METHOD = 1    # 0 (greedy search), 1 (beam search)
-BEAM_SEARCH_K = 5    # 3 or 5
+METRIC = "BLEU3"   # BLEU3, BLEU4, CIDEr
+PREDICT_METHOD = 0    # 0 (greedy search), 1 (beam search)
+BEAM_SEARCH_K = 3    # 3 or 5
 
 
 if __name__ == '__main__':
