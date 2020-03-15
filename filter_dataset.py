@@ -58,3 +58,22 @@ for row in tqdm(test_output):
     output_test_file.write(row+'\n')
 output_test_file.close()
 print('simplified test data finish writing')
+
+output_test_file_line = [0, 0, 0, 0, 0]
+output_test_file_line[0] = open(save_path+'/simplified_test_0_10.json', "w")
+output_test_file_line[1] = open(save_path+'/simplified_test_10_20.json', "w")
+output_test_file_line[2] = open(save_path+'/simplified_test_20_30.json', "w")
+output_test_file_line[3] = open(save_path+'/simplified_test_30_40.json', "w")
+output_test_file_line[4] = output_test_file_line[3]
+cnt = [0, 0, 0, 0, 0]
+
+for row in tqdm(test_output):
+    pair = json.loads(row)
+    loc = len(pair['code'].split('\n'))
+    output_test_file_line[loc//10].write(row+'\n')
+    cnt[loc//10] += 1
+
+for file in output_test_file_line:
+    file.close()
+print(cnt)
+print('simplified test data finish clustering by LOC')
