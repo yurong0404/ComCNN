@@ -19,7 +19,7 @@ def is_invalid_method(code: str, nl: str):
     else :
         return False
 
-path_list = ['./DeepCom_data/train.json', './DeepCom_data/test.json']
+path_list = ['./DeepCom_data/train.json', './DeepCom_data/valid.json', './DeepCom_data/test.json']
 save_path = './simplified_dataset'
 
 inputs = []

@@ -6,16 +6,49 @@ from model import *
 from param import *
 from predict import read_model, read_testset
 from tqdm import tqdm
+from rouge_score import rouge_scorer
+import tempfile
 
-METRIC = "BLEU3"   # BLEU3, BLEU4, CIDEr
-PREDICT_METHOD = 0    # 0 (greedy search), 1 (beam search)
-BEAM_SEARCH_K = 3    # 3 or 5
+
+METRIC_LIST = ['BLEU3', 'BLEU4', 'CIDEr', 'ROUGE_L']
+PREDICT_METHOD_LIST = ['greedy', 'beam_3', 'beam_5']
+
+
+def integrated_prediction(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception):
+    if method=='greedy' and BIDIRECTIONAL==0:
+        predict = translate(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+    elif method=='greedy' and BIDIRECTIONAL==1:
+        predict = translate_bilstm(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+    elif (method=='beam_3' or method=='beam_5') and BIDIRECTIONAL==0:    
+        predict = ''
+        try:
+            predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
+        except:
+            exception += 1
+    elif (method=='beam_3' or method=='beam_5') and BIDIRECTIONAL==1:    
+        predict = ''
+        try:
+            predict = beam_search_bilstm(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
+        except:
+            exception += 1
+    return predict, exception
+
+
+def integrated_score(metric, test_output, predict):
+    score = 0
+    if metric == 'BLEU3':
+        score = bleu(test_output, predict, 3)
+    elif metric == 'BLEU4':
+        score = bleu(test_output, predict, 4)
+    elif metric == 'CIDEr':
+        score = CIDEr(test_output, predict)
+    elif metric == 'ROUGE_L':
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
+        score = scorer.score(test_output, predict)['rougeL'].fmeasure
+    return score
 
 
 if __name__ == '__main__':
-    print("metric:", METRIC)
-    print("predict method:", PREDICT_METHOD)
-    print("Reading "+MODE+" model...")
     code_train, comment_train, code_voc, comment_voc = read_pkl()
     vocab_inp_size = len(code_voc)
     vocab_tar_size = len(comment_voc)
@@ -30,47 +63,39 @@ if __name__ == '__main__':
     encoder, decoder = read_model(encoder, decoder)
     test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
 
-    total_score = 0
-    exception = 0
-    for index, test in enumerate(tqdm(test_inputs)):
-        if PREDICT_METHOD==0 and BIDIRECTIONAL==0:
-            predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-        elif PREDICT_METHOD==0 and BIDIRECTIONAL==1:
-            predict = translate_bilstm(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-        elif PREDICT_METHOD==1 and BIDIRECTIONAL==0:    
-            predict = ''
-            try:
-                predict = beam_search(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, BEAM_SEARCH_K)
-            except:
-                exception += 1
-        elif PREDICT_METHOD==1 and BIDIRECTIONAL==1:    
-            predict = ''
-            try:
-                predict = beam_search_bilstm(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, BEAM_SEARCH_K)
-            except:
-                exception += 1
-        
-        if METRIC == "BLEU3":
-            score = bleu(test_outputs[index], predict, 3)
-        elif METRIC == "BLEU4":
-            score = bleu(test_outputs[index], predict, 4)
-        elif METRIC == "CIDEr":
-            score = CIDEr(test_outputs[index], predict)
-        total_score += score
-            
-    total_score = total_score / len(test_inputs)
+    print('mode:', MODE, ', bidirectional:', BIDIRECTIONAL)
+    print("Reading model...")
 
+    
     checkpoint_dir = getCheckpointDir()
+    f_parameter = open(checkpoint_dir+"/parameters", "a")
+ 
+    for method in PREDICT_METHOD_LIST:
+        f_parameter.write(method+'\n')
+        f_parameter.flush()
+        print('\n'+method+'\n')
+        exception = 0
+        if method == 'beam_3' or method == 'beam_5':
+            beam_k = int(method.split('_')[1])
+        else:
+            beam_k = 1
 
-    if PREDICT_METHOD == 0:
-        print(METRIC+":",round(total_score, 4))
-        f_parameter = open(checkpoint_dir+"/parameters", "a")
-        f_parameter.write(METRIC+"="+str(round(total_score, 4))+"\n")
-        f_parameter.close()
-    elif PREDICT_METHOD == 1:
-        print("Beam search(k="+str(BEAM_SEARCH_K)+")"+METRIC+":",round(total_score, 4))
-        f_parameter = open(checkpoint_dir+"/parameters", "a")
-        f_parameter.write("Beam search(k="+str(BEAM_SEARCH_K)+") "+METRIC+"="+str(round(total_score, 4))+"\n")
-        f_parameter.close()
+        total_score = dict()
+        for metric in METRIC_LIST:
+            total_score[metric] = 0
 
-    print("number of exception: ", exception)
+        for index, test in enumerate(tqdm(test_inputs)):
+            predict, exception = integrated_prediction(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception)
+            for metric in METRIC_LIST:
+                score = integrated_score(metric, test_outputs[index], predict)
+                total_score[metric] += score
+
+        for metric in METRIC_LIST:
+            total_score[metric] = total_score[metric] / len(test_inputs)
+            f_parameter.write('    '+metric+"="+str(round(total_score[metric], 4))+"\n")
+            f_parameter.flush()
+            print(metric+"="+str(round(total_score[metric], 4)))
+                
+        print("number of exception: ", exception, '\n')
+
+    f_parameter.close()

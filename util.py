@@ -68,6 +68,7 @@ def split_identifier(id_token: str):
     if  "_" in id_token:
         return id_token.split("_")
     elif id_token != id_token.lower() and id_token != id_token.upper():
+        # regular expression for camelCase
         matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', id_token)
         return [m.group(0) for m in matches]
     else:
@@ -197,6 +198,7 @@ def distribution(arr):
 def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
     
     inputs = code_tokenize(code)
+    #print(inputs)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
     
     result = ''
@@ -431,7 +433,6 @@ def CIDEr(true, pred):
         CIDEr_score += (g / (abs_cand * abs_ref)) / N
     return CIDEr_score
         
-
 
 def getCheckpointDir():
     if MODE=="symtok" and BIDIRECTIONAL==0:

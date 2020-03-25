@@ -1,0 +1,6 @@
+rouge-score
+nltk
+tqdm
+pickle
+javalang
+tensorflow-gpu=2.1.0

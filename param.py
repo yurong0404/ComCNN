@@ -1,5 +1,5 @@
-MODE = "symtok"  #tok or symtok or SBT
-BIDIRECTIONAL = 0  # 0 for LSTM, 1 for bi-LSTM
+MODE = "tok"  #tok or symtok or SBT
+BIDIRECTIONAL = 1  # 0 for LSTM, 1 for bi-LSTM
 BATCH_SIZE = 16
 EMBEDDING_DIM = 256
 UNITS = 256

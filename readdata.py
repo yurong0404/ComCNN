@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     elif MODE == "tok" or MODE == "symtok":
         code_voc, code_tokens = extractCode(inputs)
-
+    exit(1)
     input_file.close()
 
     print('readdata:')
