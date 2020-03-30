@@ -28,7 +28,7 @@ if __name__ == '__main__':
     lossArray = np.array([])
     testAccuracy = []
 
-    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
+    test_inputs, test_outputs = read_testset()
     print('start training...')
 
     EPOCHS = 50

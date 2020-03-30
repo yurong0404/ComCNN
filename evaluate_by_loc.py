@@ -20,6 +20,8 @@ DATASET_PATH = [
 
 
 if __name__ == '__main__':
+    if LOC != "all":
+        exit(0)
     code_train, comment_train, code_voc, comment_voc = read_pkl()
     vocab_inp_size = len(code_voc)
     vocab_tar_size = len(comment_voc)

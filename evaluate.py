@@ -61,7 +61,7 @@ if __name__ == '__main__':
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     encoder, decoder = read_model(encoder, decoder)
-    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
+    test_inputs, test_outputs = read_testset()
 
     print('mode:', MODE, ', arch:', ARCH)
     print("Reading model...")
