@@ -1,6 +1,7 @@
 MODE = "tok"  #tok or symtok or SBT
-BIDIRECTIONAL = 1  # 0 for LSTM, 1 for bi-LSTM
-BATCH_SIZE = 16
+LOC = "10" # 10, 20, 30, 40, or all  (must be string type), it determines which range of dataset's LOC are trained
+ARCH = 0  # 0 for LSTM, 1 for bi-LSTM, 2 for CNN_LSTM
+BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256
 GREEN = "\033[0;32;40m"

@@ -203,7 +203,7 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
     
     result = ''
     
-    hidden_h, hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
+    hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
     hidden = [hidden_h, hidden_c]
     enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
     dec_hidden = [enc_hidden_h, enc_hidden_c]
@@ -226,7 +226,7 @@ def translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_i
     inputs = code_to_index(inputs, code_voc, max_length_inp)
 
     result = ''
-    hidden = tf.zeros((1, UNITS))
+    hidden = tf.zeros((1, encoder.enc_units))
     enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden, hidden, hidden, hidden)
     dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
     dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)
@@ -259,10 +259,10 @@ def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden
                 can_lock[width*i+x] = 1
             continue
         
-        if BIDIRECTIONAL == 0:
+        if ARCH == 0:
             predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
-        elif BIDIRECTIONAL == 1:
+        elif ARCH == 1:
             predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
             
@@ -350,18 +350,28 @@ def beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length
 # Read the training data:
 def read_pkl():
     if MODE=="symtok":
-        with open('./simplified_dataset/train_symtok_data.pkl', 'rb') as f:
+        with open('./simplified_dataset/train_symtok_data_'+LOC+'.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     elif MODE=="tok":
-        with open('./simplified_dataset/train_tok_data.pkl', 'rb') as f:
+        with open('./simplified_dataset/train_tok_data_'+LOC+'.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     elif MODE=="SBT":
-        with open('./simplified_dataset/train_SBT_data.pkl', 'rb') as f:
+        with open('./simplified_dataset/train_SBT_data_'+LOC+'.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     
     return code_train, comment_train, code_voc, comment_voc
 
-def read_testset(path: str):
+def read_testset():
+    if LOC == "10":
+        path = './simplified_dataset/simplified_test_0_10.json'
+    elif LOC == "20":
+        path = './simplified_dataset/simplified_test_10_20.json'
+    elif LOC == "30":
+        path = './simplified_dataset/simplified_test_20_30.json'
+    elif LOC == "40":
+        path = './simplified_dataset/simplified_test_30_40.json'
+    elif LOC == "all":
+        path = './simplified_dataset/simplified_test.json'
     f = open(path)
     inputs = f.readlines()
     f.close()
@@ -374,6 +384,22 @@ def read_testset(path: str):
         test_outputs.append(pair['nl'])
     
     return test_inputs, test_outputs
+
+def open_trainset():
+    if LOC == "10":
+        path = './simplified_dataset/simplified_train_0_10.json'
+    elif LOC == "20":
+        path = './simplified_dataset/simplified_train_10_20.json'
+    elif LOC == "30":
+        path = './simplified_dataset/simplified_train_20_30.json'
+    elif LOC == "40":
+        path = './simplified_dataset/simplified_train_30_40.json'
+    elif LOC == "all":
+        path = './simplified_dataset/simplified_train.json'
+    f = open(path)
+    
+    return f
+
 
 #  bleu4 (n=4)
 def bleu(true, pred, n):
@@ -435,16 +461,21 @@ def CIDEr(true, pred):
         
 
 def getCheckpointDir():
-    if MODE=="symtok" and BIDIRECTIONAL==0:
+    if MODE=="symtok" and ARCH==0:
         checkpoint_dir = './training_checkpoints/adam-symtok-256'
-    elif MODE=="tok" and BIDIRECTIONAL==0:
+    elif MODE=="tok" and ARCH==0:
         checkpoint_dir = './training_checkpoints/adam-tok-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==0:
+    elif MODE=="SBT" and ARCH==0:
         checkpoint_dir = './training_checkpoints/adam-SBT-256'
-    elif MODE=="symtok" and BIDIRECTIONAL==1:
+    elif MODE=="symtok" and ARCH==1:
         checkpoint_dir = './training_checkpoints/adam-symtok-bilstm-256'
-    elif MODE=="tok" and BIDIRECTIONAL==1:
+    elif MODE=="tok" and ARCH==1:
         checkpoint_dir = './training_checkpoints/adam-tok-bilstm-256'
-    elif MODE=="SBT" and BIDIRECTIONAL==1:
+    elif MODE=="SBT" and ARCH==1:
         checkpoint_dir = './training_checkpoints/adam-SBT-bilstm-256'
+    elif MODE=="tok" and ARCH==2:
+        checkpoint_dir = './training_checkpoints/adam-tok-cnnlstm-256'
+    elif MODE=="symtok" and ARCH==2:
+        checkpoint_dir = './training_checkpoints/adam-symtok-cnnlstm-256'
+    checkpoint_dir = checkpoint_dir + '-' + LOC
     return checkpoint_dir

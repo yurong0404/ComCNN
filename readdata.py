@@ -80,7 +80,7 @@ def extractCode(inputs: list):
 
 
 if __name__ == '__main__':
-    input_file = open('./simplified_dataset/simplified_train.json')
+    input_file = open_trainset()
     inputs = input_file.readlines()
     start = time.time()
     print("comment tokenizing...")
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     elif MODE == "tok" or MODE == "symtok":
         code_voc, code_tokens = extractCode(inputs)
-    exit(1)
+
     input_file.close()
 
     print('readdata:')
@@ -109,12 +109,13 @@ if __name__ == '__main__':
 
     # Saving the training data:
     if MODE=="symtok":
-        pkl_filename = "./simplified_dataset/train_symtok_data.pkl"
+        pkl_filename = "./simplified_dataset/train_symtok_data"
     elif MODE=="tok":
-        pkl_filename = "./simplified_dataset/train_tok_data.pkl"
+        pkl_filename = "./simplified_dataset/train_tok_data"
     elif MODE=="SBT":
-        pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
-        
+        pkl_filename = "./simplified_dataset/train_SBT_data"
+    pkl_filename = pkl_filename + "_" + LOC + ".pkl"
+
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
 

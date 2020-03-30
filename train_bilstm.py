@@ -4,6 +4,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]= '0'
 from util import *
 from param import *
 from model import *
+from tqdm import tqdm
 
 if __name__ == '__main__':
     code_train, comment_train, code_voc, comment_voc = read_pkl()
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         dataset = [(code_train_batch[i], comment_train_batch[i]) for i in range(0, len(code_train_batch))]
         np.random.shuffle(dataset)
         
-        for (batch, (inp, targ)) in enumerate(dataset):
+        for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
                 enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inp, hidden, hidden, hidden, hidden)
@@ -93,5 +94,5 @@ if __name__ == '__main__':
     f_parameter = open(checkpoint_dir+"/parameters", "a")
     f_parameter.write("EPOCHS="+str(epoch)+"\n")
     f_parameter.write("BATCH_SIZE="+str(BATCH_SIZE)+"\n")
-    f_parameter.write("PREPROCESS="+MODE+"\n")
+    f_parameter.write("MODE="+MODE+"\n")
     f_parameter.close()

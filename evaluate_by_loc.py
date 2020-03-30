@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
@@ -25,16 +25,16 @@ if __name__ == '__main__':
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
-    if BIDIRECTIONAL==0:
+    if ARCH==0:
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif BIDIRECTIONAL==1:
+    elif ARCH==1:
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     encoder, decoder = read_model(encoder, decoder)
     
     
-    print('mode:', MODE, ', bidirectional:', BIDIRECTIONAL)
+    print('mode:', MODE, ', arch:', ARCH)
     print("Reading model...")
     
 

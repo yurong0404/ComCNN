@@ -24,10 +24,10 @@ if __name__ == '__main__':
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
     
-    if BIDIRECTIONAL==0:
+    if ARCH==0:
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif BIDIRECTIONAL==1:
+    elif ARCH==1:
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     
@@ -48,13 +48,13 @@ if __name__ == '__main__':
             print(GREEN+"\nCode:"+RESET_COLOR)
             code = test_inputs[index]
             print(code)
-            if BIDIRECTIONAL==0:
+            if ARCH==0:
                 print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
                 predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
                 predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
                 print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            elif BIDIRECTIONAL==1:
+            elif ARCH==1:
                 print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
                 predict = translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
@@ -70,12 +70,12 @@ if __name__ == '__main__':
                 else:
                     break
             code = '\n'.join(lines)
-            if BIDIRECTIONAL==0:
+            if ARCH==0:
                 predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
                 predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
                 print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            elif BIDIRECTIONAL==1:
+            elif ARCH==1:
                 predict = translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
                 predict = beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)

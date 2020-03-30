@@ -4,6 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
 from model import *
+from tqdm import tqdm
 
 if __name__ == '__main__':
     code_train, comment_train, code_voc, comment_voc = read_pkl()
@@ -27,7 +28,7 @@ if __name__ == '__main__':
     lossArray = np.array([])
     testAccuracy = []
 
-    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
+    test_inputs, test_outputs = read_testset()
     print('start training...')
 
     EPOCHS = 70
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         dataset = [(code_train_batch[i], comment_train_batch[i]) for i in range(0, len(code_train_batch))]
         np.random.shuffle(dataset)
         
-        for (batch, (inp, targ)) in enumerate(dataset):
+        for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
                 enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
@@ -93,5 +94,5 @@ if __name__ == '__main__':
     f_parameter = open(checkpoint_dir+"/parameters", "a")
     f_parameter.write("EPOCHS="+str(epoch)+"\n")
     f_parameter.write("BATCH_SIZE="+str(BATCH_SIZE)+"\n")
-    f_parameter.write("PREPROCESS="+MODE+"\n")
+    f_parameter.write("MODE="+MODE+"\n")
     f_parameter.close()

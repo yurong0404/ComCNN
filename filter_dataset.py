@@ -35,21 +35,28 @@ if not os.path.exists(save_path):
 output_train_file = open(save_path+'/simplified_train.json', "w")
 output_test_file = open(save_path+'/simplified_test.json', "w")
 
+# ================= filter DeepCom's dataset ====================
 print('Original total: '+str(len(inputs)))
 for pair in tqdm(inputs):
     pair = json.loads(pair)
     if is_invalid_method(pair['code'], pair['nl']):
         continue
     outputs.append(json.dumps(pair))
+# ===============================================================
 
 #random.shuffle(outputs)
+
+# ============== divide dataset into training set and testing set =================
 print('Final total: '+str(len(outputs)))
 print('Data shuffle complete')
 train_index = int(len(outputs)*0.9)
 test_index = int(len(outputs)-1)
 train_output = outputs[:train_index]
 test_output = outputs[train_index+1:test_index]
+# =================================================================================
 
+
+# ================== write the new dataset ======================
 for row in tqdm(train_output):
     output_train_file.write(row+'\n')
 output_train_file.close()
@@ -58,7 +65,29 @@ for row in tqdm(test_output):
     output_test_file.write(row+'\n')
 output_test_file.close()
 print('simplified test data finish writing')
+# ===============================================================
 
+
+# ================== write the new training set according to LOC ======================
+output_train_file_line = [0, 0, 0, 0, 0]
+output_train_file_line[0] = open(save_path+'/simplified_train_0_10.json', "w")
+output_train_file_line[1] = open(save_path+'/simplified_train_10_20.json', "w")
+output_train_file_line[2] = open(save_path+'/simplified_train_20_30.json', "w")
+output_train_file_line[3] = open(save_path+'/simplified_train_30_40.json', "w")
+output_train_file_line[4] = output_train_file_line[3]
+
+for row in tqdm(train_output):
+    pair = json.loads(row)
+    loc = len(pair['code'].split('\n'))
+    output_train_file_line[loc//10].write(row+'\n')
+
+for file in output_train_file_line:
+    file.close()
+print('simplified training data finish clustering by LOC')
+# =====================================================================================
+
+
+# ================== write the new testing set according to LOC ======================
 output_test_file_line = [0, 0, 0, 0, 0]
 output_test_file_line[0] = open(save_path+'/simplified_test_0_10.json', "w")
 output_test_file_line[1] = open(save_path+'/simplified_test_10_20.json', "w")
@@ -77,3 +106,4 @@ for file in output_test_file_line:
     file.close()
 print(cnt)
 print('simplified test data finish clustering by LOC')
+# =====================================================================================
