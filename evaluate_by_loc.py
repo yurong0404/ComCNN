@@ -27,12 +27,17 @@ if __name__ == '__main__':
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
-    if ARCH==0:
+
+    if ARCH == "lstm":
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH==1:
+    elif ARCH == "bilstm":
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "cnnlstm":
+        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+    
     encoder, decoder = read_model(encoder, decoder)
     
     

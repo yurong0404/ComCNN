@@ -2,7 +2,6 @@ import json
 import javalang
 import nltk
 import os
-import random
 from tqdm import tqdm
 
 # Usage:
@@ -44,11 +43,9 @@ for pair in tqdm(inputs):
     outputs.append(json.dumps(pair))
 # ===============================================================
 
-#random.shuffle(outputs)
 
 # ============== divide dataset into training set and testing set =================
 print('Final total: '+str(len(outputs)))
-print('Data shuffle complete')
 train_index = int(len(outputs)*0.9)
 test_index = int(len(outputs)-1)
 train_output = outputs[:train_index]
@@ -67,24 +64,6 @@ output_test_file.close()
 print('simplified test data finish writing')
 # ===============================================================
 
-
-# ================== write the new training set according to LOC ======================
-output_train_file_line = [0, 0, 0, 0, 0]
-output_train_file_line[0] = open(save_path+'/simplified_train_0_10.json', "w")
-output_train_file_line[1] = open(save_path+'/simplified_train_10_20.json', "w")
-output_train_file_line[2] = open(save_path+'/simplified_train_20_30.json', "w")
-output_train_file_line[3] = open(save_path+'/simplified_train_30_40.json', "w")
-output_train_file_line[4] = output_train_file_line[3]
-
-for row in tqdm(train_output):
-    pair = json.loads(row)
-    loc = len(pair['code'].split('\n'))
-    output_train_file_line[loc//10].write(row+'\n')
-
-for file in output_train_file_line:
-    file.close()
-print('simplified training data finish clustering by LOC')
-# =====================================================================================
 
 
 # ================== write the new testing set according to LOC ======================

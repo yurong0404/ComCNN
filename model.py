@@ -118,17 +118,16 @@ class cnnEncoder(tf.keras.Model):
                                         input_shape=(max_length_inp, embedding_dim))
         self.pool = tf.keras.layers.MaxPool1D(pool_size = 2, strides = 2)
         # output shape = (?, filters)  ? = (max_length_inp-(kernel_sz-1))//strides//pool_strides
-        self.lstm = lstm(self.enc_units)
         
-    def call(self, x, hidden):
+    def call(self, x):
         x = self.embedding(x)
         x = self.cnn(x)
         x = self.pool(x)
-        output, state_h, state_c = self.lstm(x, initial_state = hidden)
-        return output, state_h, state_c
+        return x
     
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
+
 
 class cnnBidirectionalEncoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, filters, batch_sz, max_length_inp):

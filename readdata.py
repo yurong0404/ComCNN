@@ -109,12 +109,11 @@ if __name__ == '__main__':
 
     # Saving the training data:
     if MODE=="symtok":
-        pkl_filename = "./simplified_dataset/train_symtok_data"
+        pkl_filename = "./simplified_dataset/train_symtok_data.pkl"
     elif MODE=="tok":
-        pkl_filename = "./simplified_dataset/train_tok_data"
+        pkl_filename = "./simplified_dataset/train_tok_data.pkl"
     elif MODE=="SBT":
-        pkl_filename = "./simplified_dataset/train_SBT_data"
-    pkl_filename = pkl_filename + "_" + LOC + ".pkl"
+        pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
 
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)

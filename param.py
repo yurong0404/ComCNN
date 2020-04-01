@@ -1,9 +1,9 @@
-MODE = "tok"  #tok or symtok or SBT
-LOC = "10" # 10, 20, 30, 40, or all  (must be string type), it determines which range of dataset's LOC are trained
-ARCH = 0  # 0 for LSTM, 1 for bi-LSTM, 2 for CNN_LSTM
+MODE = "SBT"  #tok or symtok or SBT
+ARCH = "lstm"  # lstm or bilstm or cnn_lstm
 BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256
+FILTERS=512  # hyper-parameter of CNN
 GREEN = "\033[0;32;40m"
 RED = "\033[0;31;40m"
 RESET_COLOR = "\033[0m"

@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]= '1'
+os.environ["CUDA_VISIBLE_DEVICES"]= '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     BUFFER_SIZE = len(code_train)
     N_BATCH = BUFFER_SIZE//BATCH_SIZE
-    FILTERS = 256
+    FILTERS = 512
 
     encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
     decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
@@ -35,8 +35,6 @@ if __name__ == '__main__':
     EPOCHS = 300
     for epoch in range(1,EPOCHS+1):
         start = time.time()
-        hidden_h, hidden_c = encoder.initialize_hidden_state()
-        hidden = [hidden_h, hidden_c]
 
         total_loss = 0 
         code_train_batch = getBatch(code_train, BATCH_SIZE)
@@ -47,8 +45,9 @@ if __name__ == '__main__':
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
-                dec_hidden = [enc_hidden_h, enc_hidden_c]
+                enc_output = encoder(inp)
+                hidden_h, hidden_c = decoder.initialize_hidden_state()
+                dec_hidden = [hidden_h, hidden_c]
                 dec_input = tf.expand_dims([comment_voc.index('<START>')] * BATCH_SIZE, 1)       
 
                 # Teacher forcing - feeding the target as the next input

@@ -33,7 +33,6 @@ if __name__ == '__main__':
 
     EPOCHS = 50
     for epoch in range(1,EPOCHS+1):
-        
         start = time.time()
         hidden = encoder.initialize_hidden_state()
 
