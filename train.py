@@ -43,9 +43,11 @@ if __name__ == '__main__':
         start = time.time()
         if ARCH == "lstm":
             # [hidden_h, hidden_c]
-            hidden = [encoder.initialize_hidden_state()]
+            hidden_h, hidden_c = encoder.initialize_hidden_state()
+            hidden = [hidden_h, hidden_c]
         elif ARCH == "bilstm":
-            hidden = encoder.initialize_hidden_state()
+            forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
+            hidden = [forward_h, forward_c, backward_h, backward_c]
         elif ARCH == "cnnlstm":
             pass
 

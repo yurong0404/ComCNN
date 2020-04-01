@@ -1,6 +1,6 @@
-MODE = "SBT"  #tok or symtok or SBT
+MODE = "symtok"  #tok or symtok or SBT
 ARCH = "lstm"  # lstm or bilstm or cnn_lstm
-BATCH_SIZE = 32
+BATCH_SIZE = 10
 EMBEDDING_DIM = 256
 UNITS = 256
 FILTERS=512  # hyper-parameter of CNN

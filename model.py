@@ -63,13 +63,14 @@ class BidirectionalEncoder(tf.keras.Model):
         self.lstm = lstm(self.enc_units)
         self.bilstm = tf.keras.layers.Bidirectional(self.lstm) 
         
-    def call(self, x, forward_h, forward_c, backward_h, backward_c):
+    def call(self, x, hidden):
         x = self.embedding(x)
-        output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x, initial_state = (forward_h, forward_c, backward_h, backward_c))
+        output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x, initial_state = hidden)
         return output, forward_h, forward_c, backward_h, backward_c
     
     def initialize_hidden_state(self):
-        return tf.zeros((self.batch_sz, self.enc_units))
+        return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units)), \
+                tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
 
 class BidirectionalDecoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz):
