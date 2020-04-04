@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
@@ -15,17 +15,17 @@ PREDICT_METHOD_LIST = ['greedy', 'beam_3', 'beam_5']
 
 
 def integrated_prediction(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception):
-    if method=='greedy' and ARCH==0:
+    if method == 'greedy' and (ARCH == 'lstm' or ARCH == 'cnn_lstm'):
         predict = translate(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-    elif method=='greedy' and ARCH==1:
+    elif method == 'greedy' and ARCH == 'bilstm':
         predict = translate_bilstm(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-    elif (method=='beam_3' or method=='beam_5') and ARCH==0:    
+    elif (method=='beam_3' or method=='beam_5') and (ARCH == 'lstm' or ARCH == 'cnn_lstm'):
         predict = ''
         try:
             predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
         except:
             exception += 1
-    elif (method=='beam_3' or method=='beam_5') and ARCH==1:    
+    elif (method=='beam_3' or method=='beam_5') and ARCH == 'bilstm':
         predict = ''
         try:
             predict = beam_search_bilstm(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
@@ -54,12 +54,17 @@ if __name__ == '__main__':
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
-    if ARCH==0:
+    
+    if ARCH == 'lstm':
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH==1:
+    elif ARCH == 'bilstm':
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == 'cnn_lstm':
+        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+
     encoder, decoder = read_model(encoder, decoder)
     test_inputs, test_outputs = read_testset()
 

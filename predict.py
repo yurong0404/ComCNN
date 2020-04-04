@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"]= '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
@@ -30,12 +31,12 @@ if __name__ == '__main__':
     elif ARCH == "bilstm":
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnnlstm":
+    elif ARCH == "cnn_lstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
     
     encoder, decoder = read_model(encoder, decoder)
-    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
+    test_inputs, test_outputs = read_testset()
 
     input_type = 0 # 0 for testing set, 1 for custom
     input_type = int(input("choose the type of input, 0 (testing set) / 1 (custom): "))
@@ -51,7 +52,7 @@ if __name__ == '__main__':
             print(GREEN+"\nCode:"+RESET_COLOR)
             code = test_inputs[index]
             print(code)
-            if ARCH == "lstm" or ARCH == "cnnlstm":
+            if ARCH == "lstm" or ARCH == "cnn_lstm":
                 print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
                 predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
@@ -73,7 +74,7 @@ if __name__ == '__main__':
                 else:
                     break
             code = '\n'.join(lines)
-            if ARCH == "lstm" or ARCH == "cnnlstm":
+            if ARCH == "lstm" or ARCH == "cnn_lstm":
                 predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
                 print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
                 predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)

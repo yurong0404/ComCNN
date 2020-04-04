@@ -202,20 +202,24 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
     
     result = ''
     
-    if ARCH == 0 or ARCH == 1:
+    if ARCH == "lstm" or ARCH == "bilstm":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
         hidden = [hidden_h, hidden_c]
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
-    elif ARCH == 2:
+    elif ARCH == "cnn_lstm":
         enc_output = encoder(inputs)
         dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
 
     dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)       
     
     for t in range(max_length_targ):
-        predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input, dec_hidden, enc_output)
-        dec_hidden = [dec_hidden_h, dec_hidden_c]
+        if ARCH == "lstm" or ARCH == "cnn_lstm":
+            predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
+            dec_hidden = [dec_hidden_h, dec_hidden_c]
+        elif ARCH == "bilstm":
+            predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
+            dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
         predicted_id = tf.argmax(predictions[0]).numpy()
         if comment_voc[predicted_id] == '<END>':
             return result
@@ -264,10 +268,10 @@ def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden
                 can_lock[width*i+x] = 1
             continue
         
-        if ARCH == 0:
-            predictions, dec_hidden_h, dec_hidden_c, attention_weights = decoder(dec_input[i], dec_hidden[i], enc_output)
+        if ARCH == "lstm" or ARCH == "cnn_lstm":
+            predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
-        elif ARCH == 1:
+        elif ARCH == "bilstm":
             predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
             
@@ -301,10 +305,22 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     inputs = code_tokenize(code)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
         
-    hidden_h, hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
-    hidden = [hidden_h, hidden_c]
-    enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
-    dec_hidden = [[enc_hidden_h, enc_hidden_c]] * width
+    if ARCH == "lstm":
+        # [hidden_h, hidden_c]
+        hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
+        hidden = [hidden_h, hidden_c]
+        enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
+        dec_hidden = [[enc_hidden_h, enc_hidden_c]] * width
+    elif ARCH == "bilstm":
+        forward_h, forward_c, backward_h, backward_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
+                                                        tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
+        hidden = [forward_h, forward_c, backward_h, backward_c]
+        enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
+        dec_hidden = [[enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]] * width
+    elif ARCH == "cnn_lstm":
+        enc_output = encoder(inputs)
+        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
+
     dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
     
     result = [''] * width
@@ -325,32 +341,6 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
             break
     return result[0]
 
-def beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
-    inputs = code_tokenize(code)
-    inputs = code_to_index(inputs, code_voc, max_length_inp)
-
-    hidden = tf.zeros((1, UNITS))
-    enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden, hidden, hidden, hidden)
-    dec_hidden = [[enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]] * width
-    dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
-
-    result = [''] * width
-    score = [1] * width
-    lock = [0] * width
-
-    for t in range(max_length_targ):
-        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width)
-        
-        if t == 0:
-            result[:width] = can_result[:width]
-            score[:width] = can_score[:width]
-            dec_input = [tf.expand_dims([can_input[x]], 0) for x in range(width)]
-            continue
-        
-        lock, result, score, dec_input, dec_hidden = beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width)
-        if 0 not in lock:
-            break
-    return result[0]
 
 # Read the training data:
 def read_pkl():
@@ -445,6 +435,7 @@ def CIDEr(true, pred):
         
 
 def getCheckpointDir():
+    checkpoint_dir = ''
     if MODE=="symtok" and ARCH=="lstm":
         checkpoint_dir = './training_checkpoints/adam-symtok-lstm'
     elif MODE=="tok" and ARCH=="lstm":
@@ -457,8 +448,8 @@ def getCheckpointDir():
         checkpoint_dir = './training_checkpoints/adam-tok-bilstm'
     elif MODE=="SBT" and ARCH=="bilstm":
         checkpoint_dir = './training_checkpoints/adam-SBT-bilstm'
-    elif MODE=="tok" and ARCH=="cnnlstm":
+    elif MODE=="tok" and ARCH=="cnn_lstm":
         checkpoint_dir = './training_checkpoints/adam-tok-cnn'
-    elif MODE=="symtok" and ARCH=="cnnlstm":
+    elif MODE=="symtok" and ARCH=="cnn_lstm":
         checkpoint_dir = './training_checkpoints/adam-symtok-cnn'
     return checkpoint_dir

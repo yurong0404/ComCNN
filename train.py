@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]= '1'
+os.environ["CUDA_VISIBLE_DEVICES"]= '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     elif ARCH == "bilstm":
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnnlstm":
+    elif ARCH == "cnn_lstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         elif ARCH == "bilstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
-        elif ARCH == "cnnlstm":
+        elif ARCH == "cnn_lstm":
             pass
 
         total_loss = 0 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                 elif ARCH == "bilstm":
                     enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inp, hidden, hidden, hidden, hidden)
                     dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
-                elif ARCH == "cnnlstm":
+                elif ARCH == "cnn_lstm":
                     enc_output = encoder(inp)
                     hidden_h, hidden_c = decoder.initialize_hidden_state()
                     dec_hidden = [hidden_h, hidden_c]
@@ -75,8 +75,8 @@ if __name__ == '__main__':
 
                 # Teacher forcing - feeding the target as the next input
                 for t in range(0, targ.shape[1]):
-                    if ARCH == "lstm" or ARCH == "cnnlstm":
-                        predictions, dec_hidden_h, dec_hidden_c, _ = decoder(dec_input, dec_hidden, enc_output)
+                    if ARCH == "lstm" or ARCH == "cnn_lstm":
+                        predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
                         dec_hidden = [dec_hidden_h, dec_hidden_c]
                     elif ARCH == "bilstm":
                         predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         # calculate test accuracy
         total_bleu = 0
         for index, test in enumerate(test_inputs):
-            if ARCH == "lstm" or ARCH == "cnnlstm":
+            if ARCH == "lstm" or ARCH == "cnn_lstm":
                 predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
             elif ARCH == "bilstm":
                 predict = translate_bilstm(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)

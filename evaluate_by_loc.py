@@ -34,7 +34,7 @@ if __name__ == '__main__':
     elif ARCH == "bilstm":
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnnlstm":
+    elif ARCH == "cnn_lstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
     

@@ -49,7 +49,7 @@ class Decoder(tf.keras.Model):
         output = tf.reshape(output, (-1, output.shape[2]))
         x = self.fc(output)
         
-        return x, state_h, state_c, attention_weights
+        return x, state_h, state_c
         
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.dec_units)), tf.zeros((self.batch_sz, self.dec_units))

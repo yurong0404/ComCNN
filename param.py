@@ -1,9 +1,9 @@
-MODE = "symtok"  #tok or symtok or SBT
-ARCH = "lstm"  # lstm or bilstm or cnn_lstm
-BATCH_SIZE = 10
+MODE = "tok"  #tok or symtok or SBT
+ARCH = "cnn_lstm"  # lstm or bilstm or cnn_lstm
+BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256
-FILTERS=512  # hyper-parameter of CNN
+FILTERS=256  # hyper-parameter of CNN
 GREEN = "\033[0;32;40m"
 RED = "\033[0;31;40m"
 RESET_COLOR = "\033[0m"
