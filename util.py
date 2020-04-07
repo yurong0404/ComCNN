@@ -10,8 +10,9 @@ import os
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import math
-import seaborn as sns
 from param import *
+from model import *
+from rouge_score import rouge_scorer
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     
     
@@ -125,7 +126,7 @@ def code_to_index(inputs, code_voc, max_length_inp):
     if len(inputs) >= max_length_inp:
         inputs = inputs[:max_length_inp-1]
 
-    if MODE=="tok" or MODE=="symtok":
+    if MODE=="tok" or MODE=="symtok" or MODE=="CODE-NN":
         for index, token in enumerate(inputs):
             if token not in code_voc:
                 inputs[index] = code_voc.index('<UNK>')
@@ -174,6 +175,13 @@ def code_tokenize(code):
         inputs = parse_tree(node, 0)
         if len(inputs) == 0:   # error-handling due to dirty data
             return []
+    
+    elif MODE == "CODE-NN":
+        tokens_parse = javalang.tokenizer.tokenize(code)
+        for token in tokens_parse:
+            token = str(token).split(' ')
+            token[1] = token[1].strip('"')
+            inputs.append(token[1])
 
     inputs.insert(0, '<START>')
     inputs.append('<END>')
@@ -202,14 +210,23 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
     
     result = ''
     
-    if ARCH == "lstm" or ARCH == "bilstm":
+    if ARCH == "lstm":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
         hidden = [hidden_h, hidden_c]
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
+    elif ARCH == "bilstm":
+        hidden = [[tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))], \
+                    [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]]
+        enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
+        dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
     elif ARCH == "cnn_lstm":
         enc_output = encoder(inputs)
         dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
+    elif ARCH == "cnn_bilstm":
+        enc_output = encoder(inputs)
+        dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units)), \
+                        tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
 
     dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)       
     
@@ -217,32 +234,9 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
         if ARCH == "lstm" or ARCH == "cnn_lstm":
             predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
             dec_hidden = [dec_hidden_h, dec_hidden_c]
-        elif ARCH == "bilstm":
+        elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
             predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
             dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
-        predicted_id = tf.argmax(predictions[0]).numpy()
-        if comment_voc[predicted_id] == '<END>':
-            return result
-        result += comment_voc[predicted_id] + ' '
-        # the predicted ID is fed back into the model
-        dec_input = tf.expand_dims([predicted_id], 0)
-
-    return result
-
-
-def translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
-    inputs = code_tokenize(code)
-    inputs = code_to_index(inputs, code_voc, max_length_inp)
-
-    result = ''
-    hidden = tf.zeros((1, encoder.enc_units))
-    enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden, hidden, hidden, hidden)
-    dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
-    dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)
-
-    for t in range(max_length_targ):
-        predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
-        dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
         predicted_id = tf.argmax(predictions[0]).numpy()
         if comment_voc[predicted_id] == '<END>':
             return result
@@ -271,7 +265,7 @@ def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden
         if ARCH == "lstm" or ARCH == "cnn_lstm":
             predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
-        elif ARCH == "bilstm":
+        elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
             predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input[i], dec_hidden[i], enc_output)
             dec_hidden[i] = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
             
@@ -320,6 +314,10 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     elif ARCH == "cnn_lstm":
         enc_output = encoder(inputs)
         dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
+    elif ARCH == "cnn_bilstm":
+        enc_output = encoder(inputs)
+        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))], \
+                        [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
 
     dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
     
@@ -353,11 +351,14 @@ def read_pkl():
     elif MODE=="SBT":
         with open('./simplified_dataset/train_SBT_data.pkl', 'rb') as f:
             code_train, comment_train, code_voc, comment_voc = pickle.load(f)
+    elif MODE=="CODE-NN":
+        with open('./simplified_dataset/train_CODENN_data.pkl', 'rb') as f:
+            code_train, comment_train, code_voc, comment_voc = pickle.load(f)
     
     return code_train, comment_train, code_voc, comment_voc
 
-def read_testset():
-    f = open('./simplified_dataset/simplified_test.json')
+def read_testset(path):
+    f = open(path)
     inputs = f.readlines()
     f.close()
     test_inputs = []
@@ -450,6 +451,65 @@ def getCheckpointDir():
         checkpoint_dir = './training_checkpoints/adam-SBT-bilstm'
     elif MODE=="tok" and ARCH=="cnn_lstm":
         checkpoint_dir = './training_checkpoints/adam-tok-cnn'
+    elif MODE=="tok" and ARCH=="cnn_bilstm":
+        checkpoint_dir = './training_checkpoints/adam-tok-cnnbilstm'
     elif MODE=="symtok" and ARCH=="cnn_lstm":
         checkpoint_dir = './training_checkpoints/adam-symtok-cnn'
+    elif MODE=="CODE-NN" and ARCH=="lstm":
+        checkpoint_dir = './training_checkpoints/adam-CODENN'
+    else:
+        print('Error: getCheckpointDir')
+        exit(0)
     return checkpoint_dir
+
+def read_model(encoder, decoder):
+    checkpoint_dir = getCheckpointDir()
+    
+    optimizer = tf.optimizers.Adam(learning_rate=1e-3)
+    checkpoint = tf.train.Checkpoint(optimizer=optimizer,
+                                 encoder=encoder,
+                                 decoder=decoder)
+    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
+
+    return encoder, decoder
+
+def integrated_prediction(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception):
+    if method == 'greedy':
+        predict = translate(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+    elif method=='beam_3' or method=='beam_5':
+        predict = ''
+        try:
+            predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
+        except:
+            exception += 1
+    return predict, exception
+
+
+def integrated_score(metric, test_output, predict):
+    score = 0
+    if metric == 'BLEU3':
+        score = bleu(test_output, predict, 3)
+    elif metric == 'BLEU4':
+        score = bleu(test_output, predict, 4)
+    elif metric == 'CIDEr':
+        score = CIDEr(test_output, predict)
+    elif metric == 'ROUGE_L':
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
+        score = scorer.score(test_output, predict)['rougeL'].fmeasure
+    return score
+
+def create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp):
+    if ARCH == "lstm":
+        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "bilstm":
+        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "cnn_lstm":
+        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+    elif ARCH == "cnn_bilstm":
+        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+
+    return encoder, decoder

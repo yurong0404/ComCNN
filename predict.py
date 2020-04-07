@@ -1,20 +1,9 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]= '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
 from param import *
-
-def read_model(encoder, decoder):
-    checkpoint_dir = getCheckpointDir()
-    
-    optimizer = tf.optimizers.Adam(learning_rate=1e-3)
-    checkpoint = tf.train.Checkpoint(optimizer=optimizer,
-                                 encoder=encoder,
-                                 decoder=decoder)
-    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
-
-    return encoder, decoder
 
 
 if __name__ == '__main__':
@@ -25,18 +14,10 @@ if __name__ == '__main__':
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
     
-    if ARCH == "lstm":
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "bilstm":
-        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnn_lstm":
-        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+    encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
     
     encoder, decoder = read_model(encoder, decoder)
-    test_inputs, test_outputs = read_testset()
+    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
 
     input_type = 0 # 0 for testing set, 1 for custom
     input_type = int(input("choose the type of input, 0 (testing set) / 1 (custom): "))

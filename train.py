@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]= '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
@@ -16,15 +16,7 @@ if __name__ == '__main__':
     BUFFER_SIZE = len(code_train)
     N_BATCH = BUFFER_SIZE//BATCH_SIZE
     
-    if ARCH == "lstm":
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "bilstm":
-        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnn_lstm":
-        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+    encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
 
     optimizer = tf.optimizers.Adam(learning_rate=1e-3)  #tensorflow 2.0
 
@@ -35,7 +27,7 @@ if __name__ == '__main__':
     lossArray = np.array([])
     testAccuracy = []
 
-    test_inputs, test_outputs = read_testset()
+    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
     print('start training...')
 
     EPOCHS = 100
@@ -48,7 +40,7 @@ if __name__ == '__main__':
         elif ARCH == "bilstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
-        elif ARCH == "cnn_lstm":
+        elif ARCH == "cnn_lstm" or ARCH == "cnn_bilstm":
             pass
 
         total_loss = 0 
@@ -70,6 +62,10 @@ if __name__ == '__main__':
                     enc_output = encoder(inp)
                     hidden_h, hidden_c = decoder.initialize_hidden_state()
                     dec_hidden = [hidden_h, hidden_c]
+                elif ARCH == "cnn_bilstm":
+                    enc_output = encoder(inp)
+                    forward_h, forward_c, backward_h, backward_c = decoder.initialize_hidden_state()
+                    dec_hidden = [forward_h, forward_c, backward_h, backward_c]
 
                 dec_input = tf.expand_dims([comment_voc.index('<START>')] * BATCH_SIZE, 1)       
 
@@ -78,7 +74,7 @@ if __name__ == '__main__':
                     if ARCH == "lstm" or ARCH == "cnn_lstm":
                         predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
                         dec_hidden = [dec_hidden_h, dec_hidden_c]
-                    elif ARCH == "bilstm":
+                    elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
                         predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
                         dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
                     
@@ -101,10 +97,7 @@ if __name__ == '__main__':
         # calculate test accuracy
         total_bleu = 0
         for index, test in enumerate(test_inputs):
-            if ARCH == "lstm" or ARCH == "cnn_lstm":
-                predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-            elif ARCH == "bilstm":
-                predict = translate_bilstm(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+            predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
             bleu_score = bleu(test_outputs[index], predict, 1)
             total_bleu += bleu_score
         total_bleu = total_bleu / len(test_inputs)

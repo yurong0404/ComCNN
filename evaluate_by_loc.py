@@ -1,13 +1,10 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
 from param import *
-from predict import read_model, read_testset
 from tqdm import tqdm
-from evaluate import integrated_prediction, integrated_score
-
 
 METRIC_LIST = ['BLEU3', 'BLEU4', 'CIDEr', 'ROUGE_L']
 PREDICT_METHOD_LIST = ['greedy', 'beam_3', 'beam_5']
@@ -20,23 +17,13 @@ DATASET_PATH = [
 
 
 if __name__ == '__main__':
-    if LOC != "all":
-        exit(0)
     code_train, comment_train, code_voc, comment_voc = read_pkl()
     vocab_inp_size = len(code_voc)
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
     max_length_targ = max(len(t) for t in comment_train)
 
-    if ARCH == "lstm":
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "bilstm":
-        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "cnn_lstm":
-        encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+    encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
     
     encoder, decoder = read_model(encoder, decoder)
     

@@ -1,5 +1,5 @@
-MODE = "tok"  #tok or symtok or SBT
-ARCH = "cnn_lstm"  # lstm or bilstm or cnn_lstm
+MODE = "tok"  #tok or symtok or SBT or CODE-NN(ARCH=lstm)
+ARCH = "cnn_bilstm"  # lstm or bilstm or cnn_lstm or cnn_bilstm
 BATCH_SIZE = 32
 EMBEDDING_DIM = 256
 UNITS = 256

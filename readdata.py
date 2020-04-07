@@ -26,7 +26,6 @@ def countCodeToken(inputs: list):
     for index, pair in enumerate(tqdm(inputs)):
         pair = json.loads(pair)
         parsed_inputs = code_tokenize(pair['code'])
-        inputs[index] = parsed_inputs
         if len(parsed_inputs) == 0:  # error-handling due to dirty data when SBT mode
             continue
         
@@ -37,7 +36,7 @@ def countCodeToken(inputs: list):
                 token_count[x] += 1
     return token_count
 
-def SBT_OOVhandler(token_count: list, code_voc: list):
+def SBT_OOVhandler(inputs: list, token_count: list, code_voc: list):
     code_tokens = []
     # select most frequency 30000 voc
     for w in sorted(token_count, key=token_count.get, reverse=True)[:30000-len(code_voc)]:
@@ -61,7 +60,7 @@ def SBT_OOVhandler(token_count: list, code_voc: list):
 def extractSBTCode(inputs : list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>','<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
     token_count = countCodeToken(inputs)
-    code_voc, code_tokens = SBT_OOVhandler(token_count, code_voc)
+    code_voc, code_tokens = SBT_OOVhandler(inputs, token_count, code_voc)
     return code_voc, code_tokens
 
 
@@ -78,10 +77,31 @@ def extractCode(inputs: list):
         code_tokens.append(parsed_inputs)
     return code_voc, code_tokens
 
+def extractCodennCode(inputs: list):
+    code_voc = ['<PAD>','<START>','<END>','<UNK>']
+    token_count = countCodeToken(inputs)
+    
+    keys = list(token_count.keys())
+    for i in keys:
+        if token_count[i] < 3:
+            del token_count[i]
+    code_voc.extend(list(token_count.keys()))
+
+    code_tokens = []
+    for index, pair in enumerate(tqdm(inputs)):
+        pair = json.loads(pair)
+        parsed_inputs = code_tokenize(pair['code'])
+        for index2 in range(len(parsed_inputs)):
+            if parsed_inputs[index2] not in code_voc:
+               parsed_inputs[index2] = "<UNK>"
+        code_tokens.append(parsed_inputs)
+    
+    return code_voc, code_tokens
+
 
 if __name__ == '__main__':
     input_file = open_trainset()
-    inputs = input_file.readlines()
+    inputs = input_file.readlines() 
     start = time.time()
     print("comment tokenizing...")
     comment_voc, comment_tokens = extractComment()
@@ -92,13 +112,15 @@ if __name__ == '__main__':
 
     elif MODE == "tok" or MODE == "symtok":
         code_voc, code_tokens = extractCode(inputs)
+    
+    elif MODE == "CODE-NN":
+        code_voc, code_tokens = extractCodennCode(inputs)
 
     input_file.close()
 
     print('readdata:')
     print('\tdata amount: '+str(len(code_tokens)))
     print('\trun time: '+str(time.time()-start))
-
     
     print('token2index...')
     code_train = token2index(code_tokens, code_voc)
@@ -114,6 +136,8 @@ if __name__ == '__main__':
         pkl_filename = "./simplified_dataset/train_tok_data.pkl"
     elif MODE=="SBT":
         pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
+    elif MODE=="CODE-NN":
+        pkl_filename = "./simplified_dataset/train_CODENN_data.pkl"
 
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
