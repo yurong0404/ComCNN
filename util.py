@@ -216,8 +216,8 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
     elif ARCH == "bilstm":
-        hidden = [[tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))], \
-                    [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]]
+        hidden = [[tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
+                    tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]]
         enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
         dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
     elif ARCH == "cnn_lstm":
@@ -316,8 +316,8 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
         dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
     elif ARCH == "cnn_bilstm":
         enc_output = encoder(inputs)
-        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))], \
-                        [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
+        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units)), \
+                        tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
 
     dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
     
@@ -478,10 +478,10 @@ def integrated_prediction(test_input, encoder, decoder, code_voc, comment_voc, m
         predict = translate(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
     elif method=='beam_3' or method=='beam_5':
         predict = ''
-        try:
-            predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
-        except:
-            exception += 1
+        #try:
+        predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
+        #except:
+        #    exception += 1
     return predict, exception
 
 
