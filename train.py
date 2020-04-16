@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     print('start training...')
 
     EPOCHS = 100
-    for epoch in range(30,EPOCHS+1):
+    for epoch in range(1,EPOCHS+1):
         start = time.time()
         if ARCH == "lstm":
             # [hidden_h, hidden_c]

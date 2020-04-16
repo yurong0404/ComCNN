@@ -2,10 +2,19 @@ from util import *
 from param import *
 from tqdm import tqdm
 
-'''
-TODO:
-    Change the rare words in comments into other common words via pre-trained embedding
-'''
+def countCommentToken(inputs: list):
+    token_count = dict()
+    # count the comment tokens
+    for index, pair in enumerate(tqdm(inputs)):
+        pair = json.loads(pair)
+        tokens = nltk.word_tokenize(pair['nl'])
+
+        for x in tokens:
+            if x not in token_count:
+                token_count[x] = 1
+            else:
+                token_count[x] += 1
+    return token_count
 
 def extractComment():
     comment_voc = ['<PAD>','<START>','<END>','<UNK>']
@@ -18,6 +27,29 @@ def extractComment():
         for x in tokens:
             if x not in comment_voc:
                 comment_voc.append(x)
+    return comment_voc, comment_tokens
+
+
+def extractCommentRemoveRareWord():
+    comment_voc = ['<PAD>','<START>','<END>','<UNK>']
+    token_count = countCommentToken(inputs)
+
+    keys = list(token_count.keys())
+    for i in keys:
+        if token_count[i] < 3:
+            del token_count[i]
+    comment_voc.extend(list(token_count.keys()))
+
+    comment_tokens = []
+    for index, pair in enumerate(tqdm(inputs)):
+        pair = json.loads(pair)
+        tokens = nltk.word_tokenize(pair['nl'])
+        tokens.append('<END>')
+        for index2 in range(len(tokens)):
+            if tokens[index2] not in comment_voc:
+               tokens[index2] = "<UNK>"
+        comment_tokens.append(tokens)
+    
     return comment_voc, comment_tokens
 
 def countCodeToken(inputs: list):
@@ -36,15 +68,17 @@ def countCodeToken(inputs: list):
                 token_count[x] += 1
     return token_count
 
-def SBT_OOVhandler(inputs: list, token_count: list, code_voc: list):
+def extractSBTCode(inputs : list):
+    code_voc = ['<PAD>','<START>','<END>','<UNK>','<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
+    token_count = countCodeToken(inputs)
+    code_voc.extend(sorted(token_count, key=token_count.get, reverse=True)[:30000-len(code_voc)])
+
     code_tokens = []
-    # select most frequency 30000 voc
-    for w in sorted(token_count, key=token_count.get, reverse=True)[:30000-len(code_voc)]:
-        code_voc.append(w) 
-        
     # <SimpleName>_extractFor -> <SimpleName>, if <SimpleName>_extractFor is outside 30000 voc
     typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
-    for index, parsed_inputs in enumerate(tqdm(inputs)):
+    for index, pair in enumerate(tqdm(inputs)):
+        pair = json.loads(pair)
+        parsed_inputs = code_tokenize(pair['code'])
         if len(parsed_inputs) == 0:  
             continue
         for index2 in range(len(parsed_inputs)):
@@ -55,12 +89,7 @@ def SBT_OOVhandler(inputs: list, token_count: list, code_voc: list):
                 else:
                     parsed_inputs[index2] = "<UNK>"
         code_tokens.append(parsed_inputs)
-    return code_voc, code_tokens
-
-def extractSBTCode(inputs : list):
-    code_voc = ['<PAD>','<START>','<END>','<UNK>','<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
-    token_count = countCodeToken(inputs)
-    code_voc, code_tokens = SBT_OOVhandler(inputs, token_count, code_voc)
+    
     return code_voc, code_tokens
 
 
@@ -77,7 +106,7 @@ def extractCode(inputs: list):
         code_tokens.append(parsed_inputs)
     return code_voc, code_tokens
 
-def extractCodennCode(inputs: list):
+def extractCodeRemoveRareWord(inputs: list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
     token_count = countCodeToken(inputs)
     
@@ -101,20 +130,23 @@ def extractCodennCode(inputs: list):
 
 if __name__ == '__main__':
     input_file = open_trainset()
-    inputs = input_file.readlines() 
+    inputs = input_file.readlines()
     start = time.time()
     print("comment tokenizing...")
-    comment_voc, comment_tokens = extractComment()
+    if MODE == "code2com" or MODE == "DeepCom":
+        comment_voc, comment_tokens = extractCommentRemoveRareWord()
+    else:
+        comment_voc, comment_tokens = extractComment()
 
     print("code tokenizing...")
-    if MODE=="SBT":
+    if MODE == "SBT" or MODE == "DeepCom":
         code_voc, code_tokens = extractSBTCode(inputs)
 
-    elif MODE == "tok" or MODE == "symtok":
+    elif MODE == "tok":
         code_voc, code_tokens = extractCode(inputs)
-    
-    elif MODE == "CODE-NN":
-        code_voc, code_tokens = extractCodennCode(inputs)
+
+    elif MODE == "CODE-NN" or MODE == "code2com":
+        code_voc, code_tokens = extractCodeRemoveRareWord(inputs)
 
     input_file.close()
 
@@ -130,14 +162,16 @@ if __name__ == '__main__':
     comment_train = pad_sequences(comment_tokens, comment_voc.index('<PAD>'))
 
     # Saving the training data:
-    if MODE=="symtok":
-        pkl_filename = "./simplified_dataset/train_symtok_data.pkl"
-    elif MODE=="tok":
+    if MODE == "tok":
         pkl_filename = "./simplified_dataset/train_tok_data.pkl"
-    elif MODE=="SBT":
+    elif MODE == "SBT":
         pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
-    elif MODE=="CODE-NN":
+    elif MODE == "CODE-NN":
         pkl_filename = "./simplified_dataset/train_CODENN_data.pkl"
+    elif MODE == "code2com":
+        pkl_filename = "./simplified_dataset/train_code2com_data.pkl"
+    elif MODE == "DeepCom":
+        pkl_filename = "./simplified_dataset/train_DeepCom_data.pkl"
 
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)

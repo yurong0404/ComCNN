@@ -1,4 +1,4 @@
-MODE = "SBT"  #tok or symtok or SBT or CODE-NN(ARCH=lstm)
+MODE = "DeepCom"  #tok or symtok or SBT or CODE-NN(ARCH=lstm) or DeepCom(ARCH=lstm) or code2com
 ARCH = "lstm"  # lstm or bilstm or cnn_lstm or cnn_bilstm
 BATCH_SIZE = 10
 EMBEDDING_DIM = 256
