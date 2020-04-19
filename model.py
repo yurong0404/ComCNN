@@ -130,6 +130,36 @@ class cnnEncoder(tf.keras.Model):
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
 
+class codennDecoder(tf.keras.Model):
+    def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz, code_vocab_size):
+        super(codennDecoder, self).__init__()
+        self.batch_sz = batch_sz
+        self.dec_units = dec_units
+        self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+        self.code_embedding = tf.keras.layers.Embedding(code_vocab_size, embedding_dim)
+        self.lstm = lstm(self.dec_units)
+        self.fc = tf.keras.layers.Dense(vocab_size)
+        self.W1 = tf.keras.layers.Dense(self.dec_units)
+        self.W2 = tf.keras.layers.Dense(self.dec_units)
+        self.V = tf.keras.layers.Dense(1)
+        
+    def call(self, x, hidden, code):
+        hidden_with_time_axis = tf.expand_dims(hidden[0], 1)
+        code = self.code_embedding(code)
+        score = tf.math.exp(hidden_with_time_axis * code)
+        attention_weights = tf.nn.softmax(score, axis=1)
+        context_vector = attention_weights * code
+        context_vector = tf.reduce_sum(context_vector, axis=1)
+        x = self.embedding(x)
+        output, state_h, state_c = self.lstm(x)
+        output = tf.nn.tanh(self.W1(state_h) + self.W2(context_vector))
+        x = self.fc(output)
+        
+        return x, state_h, state_c
+        
+    def initialize_hidden_state(self):
+        return tf.zeros((self.batch_sz, self.dec_units)), tf.zeros((self.batch_sz, self.dec_units))
+
 
 
 def loss_function(real, pred):

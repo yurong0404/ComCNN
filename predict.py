@@ -1,9 +1,13 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
 from param import *
+
+GREEN = "\033[0;32;40m"
+RED = "\033[0;31;40m"
+RESET_COLOR = "\033[0m"
 
 
 if __name__ == '__main__':
@@ -33,18 +37,13 @@ if __name__ == '__main__':
             print(GREEN+"\nCode:"+RESET_COLOR)
             code = test_inputs[index]
             print(code)
-            if ARCH == "lstm" or ARCH == "cnn_lstm":
-                print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
-                predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-                print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-                predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-                print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            elif ARCH == "bilstm":
-                print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
-                predict = translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-                print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-                predict = beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-                print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
+            print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
+            predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+            print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
+            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
+            print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
+            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 5)
+            print(GREEN+"\nBeam search prediction (k=5):\n"+RESET_COLOR+ predict)
         elif input_type == 1:
             print(GREEN+"\nCode:"+RESET_COLOR)
             lines = []
@@ -55,14 +54,10 @@ if __name__ == '__main__':
                 else:
                     break
             code = '\n'.join(lines)
-            if ARCH == "lstm" or ARCH == "cnn_lstm":
-                predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-                print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-                predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-                print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            elif ARCH == "bilstm":
-                predict = translate_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-                print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-                predict = beam_search_bilstm(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-                print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
+            predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+            print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
+            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
+            print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
+            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 5)
+            print(GREEN+"\nBeam search prediction (k=5):\n"+RESET_COLOR+ predict)
                 

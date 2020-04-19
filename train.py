@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from util import *
 from param import *
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     EPOCHS = 100
     for epoch in range(1,EPOCHS+1):
         start = time.time()
-        if ARCH == "lstm":
+        if ARCH == "lstm" or ARCH == "CODE-NN":
             # [hidden_h, hidden_c]
             hidden_h, hidden_c = encoder.initialize_hidden_state()
             hidden = [hidden_h, hidden_c]
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                if ARCH == "lstm":
+                if ARCH == "lstm" or ARCH == "CODE-NN":
                     enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
                     dec_hidden = [enc_hidden_h, enc_hidden_c]
                 elif ARCH == "bilstm":
@@ -72,13 +72,7 @@ if __name__ == '__main__':
 
                 # Teacher forcing - feeding the target as the next input
                 for t in range(0, targ.shape[1]):
-                    if ARCH == "lstm" or ARCH == "cnn_lstm":
-                        predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
-                        dec_hidden = [dec_hidden_h, dec_hidden_c]
-                    elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
-                        predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
-                        dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
-                    
+                    predictions, dec_hidden = decode_iterate(decoder, dec_input, dec_hidden, enc_output, inp)
                     loss += loss_function(targ[:, t], predictions)
                     # using teacher forcing
                     dec_input = tf.expand_dims(targ[:, t], 1)

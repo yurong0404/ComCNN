@@ -195,21 +195,16 @@ def distribution(arr):
         new_arr.append(tmp)
     return np.array(new_arr)
 
-def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
-    
-    inputs = code_tokenize(code)
-    inputs = code_to_index(inputs, code_voc, max_length_inp)
-    
-    result = ''
-    
+
+def enc_output_init_dec_hidden(inputs, encoder, decoder):
     if ARCH == "lstm":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
         hidden = [hidden_h, hidden_c]
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
     elif ARCH == "bilstm":
-        hidden = [[tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
-                    tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]]
+        hidden = [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
+                    tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]
         enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
         dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
     elif ARCH == "cnn_lstm":
@@ -220,15 +215,35 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
         dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units)), \
                         tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
 
+    elif ARCH == "CODE-NN":
+        hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
+        hidden = [hidden_h, hidden_c]
+        enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
+        dec_hidden = [enc_hidden_h, enc_hidden_c]
+    return enc_output, dec_hidden
+
+def decode_iterate(decoder, dec_input, dec_hidden, enc_output, code):
+    if ARCH == "lstm" or ARCH == "cnn_lstm":
+        predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
+        dec_hidden = [dec_hidden_h, dec_hidden_c]
+    elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
+        predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
+        dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
+    elif ARCH == "CODE-NN":
+        predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, code)
+        dec_hidden = [dec_hidden_h, dec_hidden_c]
+    return predictions, dec_hidden
+    
+def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
+    
+    inputs = code_tokenize(code)
+    inputs = code_to_index(inputs, code_voc, max_length_inp)
+    result = ''
+    enc_output, dec_hidden = enc_output_init_dec_hidden(inputs, encoder, decoder)
     dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)       
     
     for t in range(max_length_targ):
-        if ARCH == "lstm" or ARCH == "cnn_lstm":
-            predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
-            dec_hidden = [dec_hidden_h, dec_hidden_c]
-        elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
-            predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
-            dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
+        predictions, dec_hidden = decode_iterate(decoder, dec_input, dec_hidden, enc_output, inputs)
         predicted_id = tf.argmax(predictions[0]).numpy()
         if comment_voc[predicted_id] == '<END>':
             return result
@@ -239,7 +254,7 @@ def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max
     return result
 
 
-def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width):
+def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, code, width):
     can_lock = [0] * (width ** 2)
     can_input = [''] * (width ** 2)
     can_score = [1] * (width ** 2)
@@ -254,12 +269,7 @@ def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden
                 can_lock[width*i+x] = 1
             continue
         
-        if ARCH == "lstm" or ARCH == "cnn_lstm":
-            predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input[i], dec_hidden[i], enc_output)
-            dec_hidden[i] = [dec_hidden_h, dec_hidden_c]
-        elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
-            predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input[i], dec_hidden[i], enc_output)
-            dec_hidden[i] = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
+        predictions, dec_hidden[i] = decode_iterate(decoder, dec_input[i], dec_hidden[i], enc_output, code)
             
         predictions = tf.nn.softmax(predictions)
         topk_score = tf.math.top_k(predictions[0], width)[0]
@@ -290,26 +300,9 @@ def beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_inp
 def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
     inputs = code_tokenize(code)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
-        
-    if ARCH == "lstm":
-        # [hidden_h, hidden_c]
-        hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
-        hidden = [hidden_h, hidden_c]
-        enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
-        dec_hidden = [[enc_hidden_h, enc_hidden_c]] * width
-    elif ARCH == "bilstm":
-        forward_h, forward_c, backward_h, backward_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
-                                                        tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
-        hidden = [forward_h, forward_c, backward_h, backward_c]
-        enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
-        dec_hidden = [[enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]] * width
-    elif ARCH == "cnn_lstm":
-        enc_output = encoder(inputs)
-        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
-    elif ARCH == "cnn_bilstm":
-        enc_output = encoder(inputs)
-        dec_hidden = [[tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units)), \
-                        tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]] * width
+
+    enc_output, dec_hidden = enc_output_init_dec_hidden(inputs, encoder, decoder)
+    dec_hidden = [dec_hidden] * width
 
     dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
     
@@ -318,7 +311,7 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     lock = [0] * width
     
     for t in range(max_length_targ):
-        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, width)
+        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, code, width)
 
         if t == 0:
             result[:width] = can_result[:width]
@@ -440,7 +433,7 @@ def getCheckpointDir():
         checkpoint_dir = './training_checkpoints/adam-tok-cnn'
     elif MODE=="tok" and ARCH=="cnn_bilstm":
         checkpoint_dir = './training_checkpoints/adam-tok-cnnbilstm'
-    elif MODE=="CODE-NN" and ARCH=="lstm":
+    elif MODE=="CODE-NN" and ARCH=="CODE-NN":
         checkpoint_dir = './training_checkpoints/adam-CODENN'
     elif MODE=="code2com" and ARCH=="lstm":
         checkpoint_dir = './training_checkpoints/adam-code2com-lstm'
@@ -504,5 +497,8 @@ def create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp):
     elif ARCH == "cnn_bilstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "CODE-NN":
+        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
+        decoder = codennDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE, vocab_inp_size)
 
     return encoder, decoder

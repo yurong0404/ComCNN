@@ -133,7 +133,7 @@ if __name__ == '__main__':
     inputs = input_file.readlines()
     start = time.time()
     print("comment tokenizing...")
-    if MODE == "code2com" or MODE == "DeepCom":
+    if MODE == "code2com" or MODE == "DeepCom" or MODE == "CODE-NN":
         comment_voc, comment_tokens = extractCommentRemoveRareWord()
     else:
         comment_voc, comment_tokens = extractComment()
