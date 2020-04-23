@@ -126,14 +126,14 @@ def code_to_index(inputs, code_voc, max_length_inp):
     if len(inputs) >= max_length_inp:
         inputs = inputs[:max_length_inp-1]
 
-    if MODE=="tok" or MODE=="CODE-NN" or MODE == "code2com":
+    if MODE=="CODE-NN" or MODE == "ComCNN":
         for index, token in enumerate(inputs):
             if token not in code_voc:
                 inputs[index] = code_voc.index('<UNK>')
             else:
                 inputs[index] = code_voc.index(token)
                 
-    elif MODE=="SBT" or MODE=="DeepCom":
+    elif MODE=="DeepCom":
         typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
         for index, token in enumerate(inputs):
             if token not in code_voc:
@@ -154,14 +154,14 @@ def code_to_index(inputs, code_voc, max_length_inp):
 
 def code_tokenize(code):
     inputs = []
-    if MODE =="tok" or MODE == "code2com":
+    if MODE == "ComCNN":
         tokens_parse = javalang.tokenizer.tokenize(code)
         for token in tokens_parse:    # iterate the tokens of the sentence
             token = str(token).split(' ')
             splitted_id = split_identifier(token[1].strip('"'))    # split the camelCase and snake_case
             inputs.extend(splitted_id)
             
-    elif MODE == "SBT" or MODE == "DeepCom":
+    elif MODE == "DeepCom":
         tree = javalang.parse.parse('class aa {'+code+'}')
         _, node = list(tree)[2]    # 前兩個用來篩掉class aa{ }的部分
         inputs = parse_tree(node, 0)
@@ -311,7 +311,7 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
     lock = [0] * width
     
     for t in range(max_length_targ):
-        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, code, width)
+        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, inputs, width)
 
         if t == 0:
             result[:width] = can_result[:width]
@@ -327,14 +327,10 @@ def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, m
 
 # Read the training data:
 def read_pkl():
-    if MODE=="tok":
-        f = open('./simplified_dataset/train_tok_data.pkl', 'rb')
-    elif MODE=="SBT":
-        f = open('./simplified_dataset/train_SBT_data.pkl', 'rb')
-    elif MODE=="CODE-NN":
+    if MODE=="CODE-NN":
         f = open('./simplified_dataset/train_CODENN_data.pkl', 'rb')
-    elif MODE=="code2com":
-        f = open('./simplified_dataset/train_code2com_data.pkl', 'rb')
+    elif MODE=="ComCNN":
+        f = open('./simplified_dataset/train_ComCNN_data.pkl', 'rb')
     elif MODE=="DeepCom":
         f = open('./simplified_dataset/train_DeepCom_data.pkl', 'rb')
     code_train, comment_train, code_voc, comment_voc = pickle.load(f)
@@ -421,28 +417,16 @@ def CIDEr(true, pred):
 
 def getCheckpointDir():
     checkpoint_dir = ''
-    if MODE=="tok" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/adam-tok-lstm'
-    elif MODE=="SBT" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/adam-SBT-lstm'
-    elif MODE=="tok" and ARCH=="bilstm":
-        checkpoint_dir = './training_checkpoints/adam-tok-bilstm'
-    elif MODE=="SBT" and ARCH=="bilstm":
-        checkpoint_dir = './training_checkpoints/adam-SBT-bilstm'
-    elif MODE=="tok" and ARCH=="cnn_lstm":
-        checkpoint_dir = './training_checkpoints/adam-tok-cnn'
-    elif MODE=="tok" and ARCH=="cnn_bilstm":
-        checkpoint_dir = './training_checkpoints/adam-tok-cnnbilstm'
-    elif MODE=="CODE-NN" and ARCH=="CODE-NN":
-        checkpoint_dir = './training_checkpoints/adam-CODENN'
-    elif MODE=="code2com" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/adam-code2com-lstm'
-    elif MODE=="code2com" and ARCH=="cnn_lstm":
-        checkpoint_dir = './training_checkpoints/adam-code2com-cnn'
-    elif MODE=="code2com" and ARCH=="cnn_bilstm":
-        checkpoint_dir = './training_checkpoints/adam-code2com-cnnbilstm'
+    if MODE=="CODE-NN" and ARCH=="CODE-NN":
+        checkpoint_dir = './training_checkpoints/CODENN'
+    elif MODE=="ComCNN" and ARCH=="lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-lstm'
+    elif MODE=="ComCNN" and ARCH=="cnn_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnn'
+    elif MODE=="ComCNN" and ARCH=="cnn_bilstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm'
     elif MODE=="DeepCom" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/adam-DeepCom-lstm'
+        checkpoint_dir = './training_checkpoints/DeepCom-lstm'
     else:
         print('Error: getCheckpointDir')
         exit(0)

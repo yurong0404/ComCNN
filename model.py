@@ -87,9 +87,9 @@ class BidirectionalDecoder(tf.keras.Model):
         self.V = tf.keras.layers.Dense(1)
         
     def call(self, x, hidden, enc_output):
-        forward_hidden_c = tf.expand_dims(hidden[1], 1)
-        backward_hidden_c = tf.expand_dims(hidden[3], 1)
-        score = self.V(tf.nn.tanh(self.W1(enc_output) + self.W2(forward_hidden_c) + self.W3(backward_hidden_c)))
+        forward_hidden_h = tf.expand_dims(hidden[1], 1)
+        backward_hidden_h = tf.expand_dims(hidden[3], 1)
+        score = self.V(tf.nn.tanh(self.W1(enc_output) + self.W2(forward_hidden_h) + self.W3(backward_hidden_h)))
         attention_weights = tf.nn.softmax(score, axis=1)
         context_vector = attention_weights * enc_output
         context_vector = tf.reduce_sum(context_vector, axis=1)

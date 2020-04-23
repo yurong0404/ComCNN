@@ -16,21 +16,8 @@ def countCommentToken(inputs: list):
                 token_count[x] += 1
     return token_count
 
+
 def extractComment():
-    comment_voc = ['<PAD>','<START>','<END>','<UNK>']
-    comment_tokens = []
-    for index, pair in enumerate(tqdm(inputs)):
-        pair = json.loads(pair)
-        tokens = nltk.word_tokenize(pair['nl'])
-        tokens.append('<END>')
-        comment_tokens.append(tokens)
-        for x in tokens:
-            if x not in comment_voc:
-                comment_voc.append(x)
-    return comment_voc, comment_tokens
-
-
-def extractCommentRemoveRareWord():
     comment_voc = ['<PAD>','<START>','<END>','<UNK>']
     token_count = countCommentToken(inputs)
 
@@ -94,19 +81,6 @@ def extractSBTCode(inputs : list):
 
 
 def extractCode(inputs: list):
-    code_tokens = []
-    code_voc = ['<PAD>','<START>','<END>','<UNK>']
-    for index, pair in enumerate(tqdm(inputs)):
-        pair = json.loads(pair)
-        parsed_inputs = code_tokenize(pair['code'])
-
-        for x in parsed_inputs:
-            if x not in code_voc:
-                code_voc.append(x)
-        code_tokens.append(parsed_inputs)
-    return code_voc, code_tokens
-
-def extractCodeRemoveRareWord(inputs: list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
     token_count = countCodeToken(inputs)
     
@@ -133,20 +107,15 @@ if __name__ == '__main__':
     inputs = input_file.readlines()
     start = time.time()
     print("comment tokenizing...")
-    if MODE == "code2com" or MODE == "DeepCom" or MODE == "CODE-NN":
-        comment_voc, comment_tokens = extractCommentRemoveRareWord()
-    else:
+    if MODE == "ComCNN" or MODE == "DeepCom" or MODE == "CODE-NN":
         comment_voc, comment_tokens = extractComment()
 
     print("code tokenizing...")
-    if MODE == "SBT" or MODE == "DeepCom":
+    if MODE == "DeepCom":
         code_voc, code_tokens = extractSBTCode(inputs)
 
-    elif MODE == "tok":
+    elif MODE == "CODE-NN" or MODE == "ComCNN":
         code_voc, code_tokens = extractCode(inputs)
-
-    elif MODE == "CODE-NN" or MODE == "code2com":
-        code_voc, code_tokens = extractCodeRemoveRareWord(inputs)
 
     input_file.close()
 
@@ -162,14 +131,10 @@ if __name__ == '__main__':
     comment_train = pad_sequences(comment_tokens, comment_voc.index('<PAD>'))
 
     # Saving the training data:
-    if MODE == "tok":
-        pkl_filename = "./simplified_dataset/train_tok_data.pkl"
-    elif MODE == "SBT":
-        pkl_filename = "./simplified_dataset/train_SBT_data.pkl"
-    elif MODE == "CODE-NN":
+    if MODE == "CODE-NN":
         pkl_filename = "./simplified_dataset/train_CODENN_data.pkl"
-    elif MODE == "code2com":
-        pkl_filename = "./simplified_dataset/train_code2com_data.pkl"
+    elif MODE == "ComCNN":
+        pkl_filename = "./simplified_dataset/train_ComCNN_data.pkl"
     elif MODE == "DeepCom":
         pkl_filename = "./simplified_dataset/train_DeepCom_data.pkl"
 
