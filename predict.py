@@ -1,14 +1,11 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
-from param import *
+from config import *
 
 GREEN = "\033[0;32;40m"
 RED = "\033[0;31;40m"
 RESET_COLOR = "\033[0m"
-
 
 if __name__ == '__main__':
     print("Reading "+MODE+" model...")

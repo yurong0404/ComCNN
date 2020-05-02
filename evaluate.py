@@ -1,9 +1,7 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from util import *
 from model import *
-from param import *
+from config import *
 from tqdm import tqdm
 from rouge_score import rouge_scorer
 import tempfile

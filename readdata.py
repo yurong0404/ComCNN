@@ -1,5 +1,5 @@
 from util import *
-from param import *
+from config import *
 from tqdm import tqdm
 
 def countCommentToken(inputs: list):

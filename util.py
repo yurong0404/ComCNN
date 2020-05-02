@@ -7,13 +7,14 @@ import nltk
 import numpy as np
 import pickle
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import math
-from param import *
+from config import *
 from model import *
 from rouge_score import rouge_scorer
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
     
     
 '''
@@ -197,23 +198,19 @@ def distribution(arr):
 
 
 def enc_output_init_dec_hidden(inputs, encoder, decoder):
-    if ARCH == "lstm":
+    if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
         hidden = [hidden_h, hidden_c]
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
-    elif ARCH == "bilstm":
+    elif ARCH == "cnnbilstm_lstm" or ARCH == "bilstm_lstm":
         hidden = [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
                     tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]
-        enc_output, enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c = encoder(inputs, hidden)
-        dec_hidden = [enc_forward_h, enc_forward_c, enc_backward_h, enc_backward_c]
+        enc_output, enc_forward_h, enc_forward_c = encoder(inputs, hidden)
+        dec_hidden = [enc_forward_h, enc_forward_c]
     elif ARCH == "cnn_lstm":
         enc_output = encoder(inputs)
         dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
-    elif ARCH == "cnn_bilstm":
-        enc_output = encoder(inputs)
-        dec_hidden = [tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units)), \
-                        tf.zeros((1, decoder.dec_units)), tf.zeros((1, decoder.dec_units))]
 
     elif ARCH == "CODE-NN":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
@@ -223,10 +220,10 @@ def enc_output_init_dec_hidden(inputs, encoder, decoder):
     return enc_output, dec_hidden
 
 def decode_iterate(decoder, dec_input, dec_hidden, enc_output, code):
-    if ARCH == "lstm" or ARCH == "cnn_lstm":
+    if ARCH == "lstm_lstm" or ARCH == "cnn_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm" or ARCH == "bilstm_lstm":
         predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
         dec_hidden = [dec_hidden_h, dec_hidden_c]
-    elif ARCH == "bilstm" or ARCH == "cnn_bilstm":
+    elif ARCH == "bilstm_bilstm" or ARCH == "cnn_bilstm":
         predictions, dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c = decoder(dec_input, dec_hidden, enc_output)
         dec_hidden = [dec_forward_h, dec_forward_c, dec_backward_h, dec_backward_c]
     elif ARCH == "CODE-NN":
@@ -417,16 +414,21 @@ def CIDEr(true, pred):
 
 def getCheckpointDir():
     checkpoint_dir = ''
-    if MODE=="CODE-NN" and ARCH=="CODE-NN":
-        checkpoint_dir = './training_checkpoints/CODENN'
-    elif MODE=="ComCNN" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-lstm'
+    
+    if MODE=="ComCNN" and ARCH=="lstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-lstm-lstm'
+    elif MODE=="ComCNN" and ARCH=="bilstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-bilstm-lstm'
     elif MODE=="ComCNN" and ARCH=="cnn_lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-cnn'
-    elif MODE=="ComCNN" and ARCH=="cnn_bilstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm'
-    elif MODE=="DeepCom" and ARCH=="lstm":
-        checkpoint_dir = './training_checkpoints/DeepCom-lstm'
+        checkpoint_dir = './training_checkpoints/ComCNN-cnn-lstm'
+    elif MODE=="ComCNN" and ARCH=="cnnlstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnlstm-lstm'
+    elif MODE=="ComCNN" and ARCH=="cnnbilstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm'
+    elif MODE=="CODE-NN" and ARCH=="CODE-NN":
+        checkpoint_dir = './training_checkpoints/CODENN'
+    elif MODE=="DeepCom" and ARCH=="lstm_lstm":
+        checkpoint_dir = './training_checkpoints/DeepCom'
     else:
         print('Error: getCheckpointDir')
         exit(0)
@@ -469,18 +471,24 @@ def integrated_score(metric, test_output, predict):
     return score
 
 def create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp):
-    if ARCH == "lstm":
+    if ARCH == "lstm_lstm":
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "bilstm":
+    elif ARCH == "bilstm_lstm":
         encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     elif ARCH == "cnn_lstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
     elif ARCH == "cnn_bilstm":
         encoder = cnnEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
         decoder = BidirectionalDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "cnnlstm_lstm":
+        encoder = cnnlstmEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "cnnbilstm_lstm":
+        encoder = cnnbilstmEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     elif ARCH == "CODE-NN":
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
         decoder = codennDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE, vocab_inp_size)
