@@ -4,6 +4,8 @@ from config import *
 from model import *
 from tqdm import tqdm
 
+physical_devices = tf.config.list_physical_devices('GPU') 
+tf.config.experimental.set_memory_growth(physical_devices[0], True) 
 
 if __name__ == '__main__':
     code_train, comment_train, code_voc, comment_voc = read_pkl()
@@ -30,17 +32,18 @@ if __name__ == '__main__':
     test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
     print('start training...')
 
+    patientEarlyStopCount = 0
     EPOCHS = 100
     for epoch in range(1,EPOCHS+1):
         start = time.time()
-        if ARCH == "lstm_lstm" or ARCH == "CODE-NN" or ARCH == "cnnlstm_lstm":
+        if ARCH == "lstm_lstm":
             # [hidden_h, hidden_c]
             hidden_h, hidden_c = encoder.initialize_hidden_state()
             hidden = [hidden_h, hidden_c]
-        elif  ARCH == "cnnbilstm_lstm" or ARCH == "bilstm_lstm":
+        elif  ARCH == "bilstm_lstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
-        elif ARCH == "cnn_lstm":
+        elif ARCH == "cnn_lstm" or ARCH == "CODE-NN":
             pass
 
         total_loss = 0 
@@ -52,13 +55,15 @@ if __name__ == '__main__':
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                if ARCH == "lstm_lstm" or ARCH == "CODE-NN" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm" or ARCH == "bilstm_lstm":
+                if ARCH == "lstm_lstm" or ARCH == "bilstm_lstm":
                     enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
-                    dec_hidden = [enc_hidden_h, enc_hidden_c]
                 elif ARCH == "cnn_lstm":
                     enc_output = encoder(inp)
-                    hidden_h, hidden_c = decoder.initialize_hidden_state()
-                    dec_hidden = [hidden_h, hidden_c]
+                    enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
+                elif ARCH == "CODE-NN":
+                    enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
+
+                dec_hidden = [enc_hidden_h, enc_hidden_c]
 
                 dec_input = tf.expand_dims([comment_voc.index('<START>')] * BATCH_SIZE, 1)       
 
@@ -71,21 +76,16 @@ if __name__ == '__main__':
                 
             batch_loss = (loss / int(targ.shape[1]))
             total_loss += batch_loss
-            variables = encoder.variables + decoder.variables
+            if ARCH == "CODE-NN":
+                variables = decoder.variables
+            else:
+                variables = encoder.variables + decoder.variables
             gradients = tape.gradient(loss, variables)
-            optimizer.apply_gradients(zip(gradients, variables))
-            
+            optimizer.apply_gradients(zip(gradients, variables))    
         lossArray = np.append(lossArray, (total_loss / N_BATCH) )    
         
-        # saving (checkpoint) the model every 2 epochs
-        if (epoch + 1) % 2 == 0:
-            checkpoint.save(file_prefix = checkpoint_prefix)
+        training_time = time.time() - start
         
-        output_f = open(checkpoint_dir+"/training_log", "a")
-        if epoch == 1:
-            print('Training time taken for 1 epoch {} sec\n'.format(time.time() - start))
-            output_f.write('Training time taken for 1 epoch {} sec\n'.format(time.time() - start))
-
         # calculate test accuracy
         total_bleu = 0
         for index, test in enumerate(test_inputs):
@@ -94,6 +94,20 @@ if __name__ == '__main__':
             total_bleu += bleu_score
         total_bleu = total_bleu / len(test_inputs)
         testAccuracy.append(total_bleu)
+
+        if epoch != 1 and total_bleu < testAccuracy[-2]:
+            patientEarlyStopCount += 1
+        if patientEarlyStopCount == 4:
+            break
+
+        # saving (checkpoint) the model every 2 epochs
+        if (epoch + 1) % 2 == 0:
+            checkpoint.save(file_prefix = checkpoint_prefix)
+
+        output_f = open(checkpoint_dir+"/training_log", "a")
+        if epoch == 1:
+            print('Training time taken for 1 epoch {} sec\n'.format(training_time))
+            output_f.write('Training time taken for 1 epoch {} sec\n'.format(training_time))
         
         if epoch == 1:
             print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
@@ -110,4 +124,5 @@ if __name__ == '__main__':
     f_parameter.write("EPOCHS="+str(epoch)+"\n")
     f_parameter.write("BATCH_SIZE="+str(BATCH_SIZE)+"\n")
     f_parameter.write("MODE="+MODE+"\n")
+    f_parameter.write("ARCH="+ARCH+"\n")
     f_parameter.close()

@@ -20,10 +20,10 @@ The dataset in this study is derived from DeepCom. This script will filter the D
 After the dataset is read by the program, the dataset needs to be pre-processed (variable splitting, etc.) to be thrown into the deep learning model for training. However, this process requires a lot of time to process. In order to save processing time in the future, this script will save the information required by the deep learning model from the dataset after preprocessing and save it as a pkl file. If you need to read the dataset, you only need to read the pkl file and restore it to the format required by the model, which will save a lot of time for future research.
 ***
 ## train.py
-This script trains the seq2seq model, and architecture is set in param.py
+This script trains the seq2seq model, and architecture is set in config.py
 
 ***
-## param.py
+## config.py
 這個檔案的功能是設定其他script所需的全域變數(如欲選取的模型)，以及模型訓練的參數等 (!!!Effective for whole project!!!)
 
 The function of this file is to set the global variables (such as which model you want to select) used by other scripts, and the hyper-parameters of model for training. (!!!Effective for whole project!!!)
@@ -31,7 +31,7 @@ The function of this file is to set the global variables (such as which model yo
 ## predict.py
 這檔案讀取已訓練好的模型，並且選取特定程式碼，使用該模型翻譯註解
 
-This script restores the pre-trained model and translate specific codes to comment through the model.
+This script restores the pre-trained model and translate codes to comment through the model.
 ***
 ## evaluate.py
 這檔案讀取已訓練好的模型，並且使用bleu3、bleu4, CIDEr, ROUGE-L評測該模型
@@ -42,7 +42,7 @@ This script restores the trained model and evaluates the model with bleu3, bleu4
 ## evaluate_by_loc.py
 這個檔案功能與evaluate.py類似，只是分別針對特定行碼數的testing data進行評測
 
-This script is similar to evaluate.py. The only difference is that this evaluates different testing sets with specific LOC ranges respectively.
+This script is similar to evaluate.py. The only difference is that this evaluates different testing sets with specific LOC ranges.
 ***
 ## util.py
 這裡面有很多瑣碎的小function

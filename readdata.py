@@ -80,7 +80,7 @@ def extractSBTCode(inputs : list):
     return code_voc, code_tokens
 
 
-def extractCode(inputs: list):
+def extractCodeRemoveRare(inputs: list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
     token_count = countCodeToken(inputs)
     
@@ -101,6 +101,20 @@ def extractCode(inputs: list):
     
     return code_voc, code_tokens
 
+def extractCode(inputs: list):
+    code_voc = ['<PAD>','<START>','<END>','<UNK>']
+    
+    code_tokens = []
+    for index, pair in enumerate(tqdm(inputs)):
+        pair = json.loads(pair)
+        parsed_inputs = code_tokenize(pair['code'])
+        for token in parsed_inputs:
+            if token not in code_voc:
+                code_voc.append(token)
+        code_tokens.append(parsed_inputs)
+    
+    return code_voc, code_tokens
+
 
 if __name__ == '__main__':
     input_file = open_trainset()
@@ -114,8 +128,12 @@ if __name__ == '__main__':
     if MODE == "DeepCom":
         code_voc, code_tokens = extractSBTCode(inputs)
 
-    elif MODE == "CODE-NN" or MODE == "ComCNN":
+    elif MODE == "CODE-NN":
+        code_voc, code_tokens = extractCodeRemoveRare(inputs)
+
+    elif MODE == "ComCNN":
         code_voc, code_tokens = extractCode(inputs)
+
 
     input_file.close()
 
