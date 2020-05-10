@@ -40,10 +40,10 @@ if __name__ == '__main__':
             # [hidden_h, hidden_c]
             hidden_h, hidden_c = encoder.initialize_hidden_state()
             hidden = [hidden_h, hidden_c]
-        elif  ARCH == "bilstm_lstm":
+        elif  ARCH == "bilstm_lstm" or ARCH == "cnnbilstm_lstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
-        elif ARCH == "cnn_lstm" or ARCH == "CODE-NN":
+        elif  ARCH == "CODE-NN":
             pass
 
         total_loss = 0 
@@ -55,11 +55,11 @@ if __name__ == '__main__':
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                if ARCH == "lstm_lstm" or ARCH == "bilstm_lstm":
+                if ARCH == "lstm_lstm" or ARCH == "bilstm_lstm" or ARCH == "cnnbilstm_lstm":
                     enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
-                elif ARCH == "cnn_lstm":
-                    enc_output = encoder(inp)
-                    enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
+                #elif ARCH == "cnn_lstm":
+                #    enc_output = encoder(inp)
+                #    enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
                 elif ARCH == "CODE-NN":
                     enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
 
