@@ -79,11 +79,9 @@ def extractSBTCode(inputs : list):
     
     return code_voc, code_tokens
 
-
 def extractCodeRemoveRare(inputs: list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
     token_count = countCodeToken(inputs)
-    
     keys = list(token_count.keys())
     for i in keys:
         if token_count[i] < 3:
@@ -103,7 +101,6 @@ def extractCodeRemoveRare(inputs: list):
 
 def extractCode(inputs: list):
     code_voc = ['<PAD>','<START>','<END>','<UNK>']
-    
     code_tokens = []
     for index, pair in enumerate(tqdm(inputs)):
         pair = json.loads(pair)
@@ -134,12 +131,7 @@ if __name__ == '__main__':
     elif MODE == "ComCNN":
         code_voc, code_tokens = extractCode(inputs)
 
-
     input_file.close()
-
-    print('readdata:')
-    print('\tdata amount: '+str(len(code_tokens)))
-    print('\trun time: '+str(time.time()-start))
     
     print('token2index...')
     code_train = token2index(code_tokens, code_voc)
@@ -147,6 +139,10 @@ if __name__ == '__main__':
     print('sequences padding...')
     code_train = pad_sequences(code_tokens, code_voc.index('<PAD>'))
     comment_train = pad_sequences(comment_tokens, comment_voc.index('<PAD>'))
+
+    print('readdata:')
+    print('\tdata amount: '+str(len(code_tokens)))
+    print('\trun time: '+str(time.time()-start))
 
     # Saving the training data:
     if MODE == "CODE-NN":
@@ -156,8 +152,8 @@ if __name__ == '__main__':
     elif MODE == "DeepCom":
         pkl_filename = "./simplified_dataset/train_DeepCom_data.pkl"
 
-    with open(pkl_filename, 'wb') as f:
-        pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
+#    with open(pkl_filename, 'wb') as f:
+#        pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
 
     print('size of code vocabulary: ', len(code_voc))
     print('size of comment vocabulary: ', len(comment_voc))

@@ -14,6 +14,7 @@ import math
 from config import *
 from model import *
 from rouge_score import rouge_scorer
+from tqdm import tqdm
 
     
     
@@ -85,7 +86,7 @@ Usage:
     => [0, 7, 8, ..., 14, 29, 14, 30, 1]
 '''
 def token2index(lst: list, voc: list) -> list:
-    for index, seq in enumerate(lst):
+    for index, seq in enumerate(tqdm(lst)):
         seq_index = []
         for token in seq:
             seq_index.append(voc.index(token))
@@ -95,7 +96,7 @@ def token2index(lst: list, voc: list) -> list:
 
 def pad_sequences(lst: list, pad_data: int):
     maxlen = max(len(x) for x in lst)
-    for index, seq in enumerate(lst):
+    for index, seq in enumerate(tqdm(lst)):
         lst[index].extend([pad_data] * (maxlen-len(seq)))
     return np.array(lst)
 
@@ -152,7 +153,6 @@ def code_to_index(inputs, code_voc, max_length_inp):
 
     return inputs
 
-
 def code_tokenize(code):
     inputs = []
     if MODE == "ComCNN":
@@ -161,7 +161,7 @@ def code_tokenize(code):
             token = str(token).split(' ')
             splitted_id = split_identifier(token[1].strip('"'))    # split the camelCase and snake_case
             inputs.extend(splitted_id)
-            
+
     elif MODE == "DeepCom":
         tree = javalang.parse.parse('class aa {'+code+'}')
         _, node = list(tree)[2]    # 前兩個用來篩掉class aa{ }的部分
@@ -198,28 +198,23 @@ def distribution(arr):
 
 
 def enc_output_init_dec_hidden(inputs, encoder, decoder):
-    if ARCH == "lstm_lstm":
+    if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm":
         hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
         hidden = [hidden_h, hidden_c]
         enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
         dec_hidden = [enc_hidden_h, enc_hidden_c]
-    elif  ARCH == "bilstm_lstm" or ARCH == "cnnbilstm_lstm":
+    elif ARCH == "cnnbilstm_lstm":
         hidden = [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
                     tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]
         enc_output, enc_forward_h, enc_forward_c = encoder(inputs, hidden)
         dec_hidden = [enc_forward_h, enc_forward_c]
-    #elif ARCH == "cnn_lstm":
-    #    enc_output = encoder(inputs)
-    #    enc_hidden_h, enc_hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
-    #    dec_hidden = [enc_hidden_h, enc_hidden_c]
-
     elif ARCH == "CODE-NN":
         enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
         dec_hidden = [enc_hidden_h, enc_hidden_c]
     return enc_output, dec_hidden
 
 def decode_iterate(decoder, dec_input, dec_hidden, enc_output, code):
-    if ARCH == "lstm_lstm" or ARCH == "cnnbilstm_lstm" or ARCH == "bilstm_lstm":
+    if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm":
         predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
         dec_hidden = [dec_hidden_h, dec_hidden_c]
     elif ARCH == "CODE-NN":
@@ -228,7 +223,6 @@ def decode_iterate(decoder, dec_input, dec_hidden, enc_output, code):
     return predictions, dec_hidden
     
 def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
-    
     inputs = code_tokenize(code)
     inputs = code_to_index(inputs, code_voc, max_length_inp)
     result = ''
@@ -413,14 +407,16 @@ def getCheckpointDir():
     
     if MODE=="ComCNN" and ARCH=="lstm_lstm":
         checkpoint_dir = './training_checkpoints/ComCNN-lstm-lstm'
-    elif MODE=="ComCNN" and ARCH=="bilstm_lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-bilstm-lstm'
+    elif MODE=="ComCNN" and ARCH=="cnnlstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnlstm-lstm'
     elif MODE=="ComCNN" and ARCH=="cnnbilstm_lstm":
         checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm'
     elif MODE=="CODE-NN" and ARCH=="CODE-NN":
         checkpoint_dir = './training_checkpoints/CODENN'
     elif MODE=="CODE-NN" and ARCH=="lstm_lstm":
         checkpoint_dir = './training_checkpoints/ComCNN-lstm-lstm-no-idsplit'
+    elif MODE=="CODE-NN" and ARCH=="cnnbilstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm-no-idsplit'
     elif MODE=="DeepCom" and ARCH=="lstm_lstm":
         checkpoint_dir = './training_checkpoints/DeepCom'
     else:
@@ -470,8 +466,8 @@ def create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp):
     if ARCH == "lstm_lstm":
         encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "bilstm_lstm":
-        encoder = BidirectionalEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+    elif ARCH == "cnnlstm_lstm":
+        encoder = cnnlstmEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE, max_length_inp)
         decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
     elif ARCH == "cnnbilstm_lstm":
         encoder = cnnbilstmEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)

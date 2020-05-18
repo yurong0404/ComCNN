@@ -57,25 +57,33 @@ class Decoder(tf.keras.Model):
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.dec_units)), tf.zeros((self.batch_sz, self.dec_units))
 
-class BidirectionalEncoder(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz):
-        super(BidirectionalEncoder, self).__init__()
+
+class cnnlstmEncoder(tf.keras.Model):
+    def __init__(self, vocab_size, embedding_dim, filters, batch_sz, max_length_inp):
+        super(cnnlstmEncoder, self).__init__()
         self.batch_sz = batch_sz
-        self.enc_units = enc_units
+        self.kernel_size = 3
+        self.strides = 1
+        self.enc_units = filters
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+        self.cnn = tf.keras.layers.Conv1D(filters=self.enc_units,
+                                        kernel_size=self.kernel_size,
+                                        strides=self.strides,
+                                        input_shape=(max_length_inp, embedding_dim))
+        self.pool = tf.keras.layers.MaxPool1D(pool_size = 2, strides = 2)
+        # output shape = (?, filters)  ? = (max_length_inp-(kernel_sz-1))//strides//pool_strides
         self.lstm = lstm(self.enc_units)
-        self.bilstm = tf.keras.layers.Bidirectional(self.lstm) 
         
     def call(self, x, hidden):
         x = self.embedding(x)
-        output, forward_h, forward_c, backward_h, backward_c = self.bilstm(x, initial_state = hidden)
-        output = output[:,:,:self.enc_units] * output[:,:,self.enc_units:]
-        return output, forward_h, forward_c
+        _, state_h, state_c = self.lstm(x, initial_state = hidden)
+        x = self.cnn(x)
+        x = self.pool(x)
+        
+        return x, state_h, state_c
     
     def initialize_hidden_state(self):
-        return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units)), \
-                tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
-
+        return tf.zeros((self.batch_sz, self.enc_units)), tf.zeros((self.batch_sz, self.enc_units))
 
 class cnnbilstmEncoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, filters, batch_sz, max_length_inp):

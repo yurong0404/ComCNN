@@ -8,7 +8,7 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True) 
 
 if __name__ == '__main__':
-    code_train, comment_train, code_voc, comment_voc = read_pkl()
+    code_train, comment_train, code_voc, comment_voc = read_pkl()    
     vocab_inp_size = len(code_voc)
     vocab_tar_size = len(comment_voc)
     max_length_inp = max(len(t) for t in code_train)
@@ -36,11 +36,10 @@ if __name__ == '__main__':
     EPOCHS = 100
     for epoch in range(1,EPOCHS+1):
         start = time.time()
-        if ARCH == "lstm_lstm":
-            # [hidden_h, hidden_c]
+        if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm":
             hidden_h, hidden_c = encoder.initialize_hidden_state()
             hidden = [hidden_h, hidden_c]
-        elif  ARCH == "bilstm_lstm" or ARCH == "cnnbilstm_lstm":
+        elif ARCH == "cnnbilstm_lstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
         elif  ARCH == "CODE-NN":
@@ -55,11 +54,8 @@ if __name__ == '__main__':
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                if ARCH == "lstm_lstm" or ARCH == "bilstm_lstm" or ARCH == "cnnbilstm_lstm":
+                if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm":
                     enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
-                #elif ARCH == "cnn_lstm":
-                #    enc_output = encoder(inp)
-                #    enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
                 elif ARCH == "CODE-NN":
                     enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
 
@@ -97,7 +93,7 @@ if __name__ == '__main__':
 
         if epoch != 1 and total_bleu < testAccuracy[-2]:
             patientEarlyStopCount += 1
-        if patientEarlyStopCount == 4:
+        if patientEarlyStopCount == 3:
             break
 
         # saving (checkpoint) the model every 2 epochs
