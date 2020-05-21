@@ -152,8 +152,8 @@ if __name__ == '__main__':
     elif MODE == "DeepCom":
         pkl_filename = "./simplified_dataset/train_DeepCom_data.pkl"
 
-#    with open(pkl_filename, 'wb') as f:
-#        pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
+    with open(pkl_filename, 'wb') as f:
+        pickle.dump([code_train, comment_train, code_voc, comment_voc], f)
 
     print('size of code vocabulary: ', len(code_voc))
     print('size of comment vocabulary: ', len(comment_voc))
