@@ -61,4 +61,3 @@ if __name__ == '__main__':
             print(GREEN+"\nBeam search prediction (k=5):\n"+RESET_COLOR+ predict)
             predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 7)
             print(GREEN+"\nBeam search prediction (k=7):\n"+RESET_COLOR+ predict)
-                
