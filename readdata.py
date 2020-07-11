@@ -68,6 +68,9 @@ def extractSBTCode(inputs : list):
         parsed_inputs = code_tokenize(pair['code'])
         if len(parsed_inputs) == 0:  
             continue
+        #elif len(parsed_inputs) > 800:
+        #    parsed_inputs = parsed_inputs[:800]
+        #    parsed_inputs[-1] = "<END>"
         for index2 in range(len(parsed_inputs)):
             if parsed_inputs[index2] not in code_voc:
                 tmp = parsed_inputs[index2].split('_')
@@ -118,18 +121,18 @@ if __name__ == '__main__':
     inputs = input_file.readlines()
     start = time.time()
     print("comment tokenizing...")
-    if MODE == "ComCNN" or MODE == "DeepCom" or MODE == "CODE-NN":
-        comment_voc, comment_tokens = extractComment()
+    comment_voc, comment_tokens = extractComment()
 
     print("code tokenizing...")
     if MODE == "DeepCom":
         code_voc, code_tokens = extractSBTCode(inputs)
-
     elif MODE == "CODE-NN":
         code_voc, code_tokens = extractCodeRemoveRare(inputs)
-
     elif MODE == "ComCNN":
         code_voc, code_tokens = extractCode(inputs)
+    elif MODE == "Hybrid-DeepCom":
+        code_voc, code_tokens = extractCode(inputs)
+        #code_tokens = [list(a) for a in zip(code_tokens, ast_tokens)]
 
     input_file.close()
     
@@ -151,6 +154,8 @@ if __name__ == '__main__':
         pkl_filename = "./simplified_dataset/train_ComCNN_data.pkl"
     elif MODE == "DeepCom":
         pkl_filename = "./simplified_dataset/train_DeepCom_data.pkl"
+    elif MODE == "Hybrid-DeepCom":
+        pkl_filename = "./simplified_dataset/train_Hybrid-DeepCom_data.pkl"
 
     with open(pkl_filename, 'wb') as f:
         pickle.dump([code_train, comment_train, code_voc, comment_voc], f)

@@ -15,11 +15,7 @@ DATASET_PATH = [
 
 
 if __name__ == '__main__':
-    code_train, comment_train, code_voc, comment_voc = read_pkl()
-    vocab_inp_size = len(code_voc)
-    vocab_tar_size = len(comment_voc)
-    max_length_inp = max(len(t) for t in code_train)
-    max_length_targ = max(len(t) for t in comment_train)
+    code_train, comment_train, code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_data()
 
     encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
     

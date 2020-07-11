@@ -7,12 +7,19 @@ from tqdm import tqdm
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True) 
 
+
+def calculate_test_acc(test_inputs, test_outputs, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
+    total_bleu = 0
+    for index, test in enumerate(tqdm(test_inputs)):
+        predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ) 
+        bleu_score = bleu(test_outputs[index], predict, 1)
+        total_bleu += bleu_score
+    return total_bleu
+
+
 if __name__ == '__main__':
-    code_train, comment_train, code_voc, comment_voc = read_pkl()    
-    vocab_inp_size = len(code_voc)
-    vocab_tar_size = len(comment_voc)
-    max_length_inp = max(len(t) for t in code_train)
-    max_length_targ = max(len(t) for t in comment_train)
+
+    code_train, comment_train, code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_data()
 
     BUFFER_SIZE = len(code_train)
     N_BATCH = BUFFER_SIZE//BATCH_SIZE
@@ -36,12 +43,14 @@ if __name__ == '__main__':
     EPOCHS = 100
     for epoch in range(1,EPOCHS+1):
         start = time.time()
-        if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm":
+        if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "DeepCom":
             hidden_h, hidden_c = encoder.initialize_hidden_state()
             hidden = [hidden_h, hidden_c]
         elif ARCH == "cnnbilstm_lstm":
             forward_h, forward_c, backward_h, backward_c = encoder.initialize_hidden_state()
             hidden = [forward_h, forward_c, backward_h, backward_c]
+        elif ARCH == "Hybrid-DeepCom":
+            hidden = encoder.initialize_hidden_state()
         elif  ARCH == "CODE-NN":
             pass
 
@@ -50,23 +59,27 @@ if __name__ == '__main__':
         comment_train_batch = getBatch(comment_train, BATCH_SIZE)
         dataset = [(code_train_batch[i], comment_train_batch[i]) for i in range(0, len(code_train_batch))]
         np.random.shuffle(dataset)
-        
+
         for (batch, (inp, targ)) in enumerate(tqdm(dataset)):
             loss = 0
             with tf.GradientTape() as tape:
-                if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm":
-                    enc_output, enc_hidden_h, enc_hidden_c = encoder(inp, hidden)
+                dec_hidden = []
+                if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm" or ARCH == "DeepCom":
+                    enc_output, enc_hidden1, enc_hidden2 = encoder(inp, hidden)
+                    dec_hidden = [enc_hidden1, enc_hidden2]
                 elif ARCH == "CODE-NN":
-                    enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
-
-                dec_hidden = [enc_hidden_h, enc_hidden_c]
-
+                    enc_output, enc_hidden1, enc_hidden2 = tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS)), tf.zeros((BATCH_SIZE, UNITS))
+                    dec_hidden = [enc_hidden1, enc_hidden2]
+                elif ARCH == "Hybrid-DeepCom":
+                    enc_output, dec_hidden = encoder(inp, hidden)
+                
                 dec_input = tf.expand_dims([comment_voc.index('<START>')] * BATCH_SIZE, 1)       
 
                 # Teacher forcing - feeding the target as the next input
                 for t in range(0, targ.shape[1]):
                     predictions, dec_hidden = decode_iterate(decoder, dec_input, dec_hidden, enc_output, inp)
                     loss += loss_function(targ[:, t], predictions)
+
                     # using teacher forcing
                     dec_input = tf.expand_dims(targ[:, t], 1)
                 
@@ -83,11 +96,7 @@ if __name__ == '__main__':
         training_time = time.time() - start
         
         # calculate test accuracy
-        total_bleu = 0
-        for index, test in enumerate(test_inputs):
-            predict = translate(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-            bleu_score = bleu(test_outputs[index], predict, 1)
-            total_bleu += bleu_score
+        total_bleu = calculate_test_acc(test_inputs, test_outputs, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
         total_bleu = total_bleu / len(test_inputs)
         testAccuracy.append(total_bleu)
 
