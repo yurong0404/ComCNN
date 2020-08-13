@@ -24,23 +24,56 @@ This script trains our proposed model, and config.py can set the architecture
 This file set the global constant variables for whole project.
 ***
 ## predict.py
-這檔案讀取已訓練好的模型，並且使用該模型將程式碼翻譯成註解
 
 This script restores the pre-trained model and translate given codes to the comments.
 ***
 ## evaluate.py
-這檔案讀取已訓練好的模型，並且使用bleu3、bleu4, CIDEr, ROUGE-L評測該模型
 
 This script restores the trained model and evaluates the model with bleu3, bleu4, CIDEr, ROUGE-L.
 ***
 
 ## evaluate_by_loc.py
-這個檔案功能與evaluate.py類似，只是分別針對特定行碼數的testing data進行評測
 
 This script is similar to evaluate.py. It evaluates different testing sets according to LOC levels.
 ***
 ## util.py
-這裡面有很多小function
 
 There are a lot of functions in the file.
 ***
+
+## Create new dataset from DeepCom's dataset 
+(DeepCom's dataset need to be under the "./DeepCom_data/")
+```bash
+$ python3 filter_dataset.py
+```
+After the script finishs running, new dataset will be created under the "./simplified_dataset/"
+
+***
+
+## Preprocess the training data
+```bash
+$ python3 readdata.py
+```
+
+***
+
+## Train the model
+```bash
+$ python3 train.py
+```
+After training, the trained model will be saved under "./training_checkpoints/"
+***
+## Use model to predict comments
+```bash
+$ python3 predict.py
+```
+***
+## Evaluate the model
+```bash
+$ python3 evaluate.py
+$ python3 evaluate_by_loc.py
+```
+After evaluating, the results will be saved in "./training_checkpoints/model_name/parameters" and "./training_checkpoints/model_name/performance"
+***
+## Change configuration
+please edit the config.py file 
