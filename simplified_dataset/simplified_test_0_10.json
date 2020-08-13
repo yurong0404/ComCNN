@@ -1,3 +1,18 @@
+{"code": "public void actionPerformed(ActionEvent ev){\n  execute(getSyntax());\n}\n", "nl": "action to be performed"}
+{"code": "public VisualGraph(VisualTable nodes,VisualTable edges,Boolean directed,String nodeKey,String sourceKey,String targetKey){\n  super(nodes,edges,directed,nodeKey,sourceKey,targetKey);\n}\n", "nl": "Create a new VisualGraph"}
+{"code": "@Override public byte[] asBytes(int rowNumber){\n  return ByteBuffer.allocate(4).putInt(getInt(rowNumber)).array();\n}\n", "nl": "Returns the contents of the cell at rowNumber as a byte[]"}
+{"code": "public Map<String,File> dexClassIndex(){\n  return dexClassIndex;\n}\n", "nl": "Return the dex class index that maps class names to files"}
+{"code": "protected TextViewer createText(Composite parent){\n  return new TextViewer(parent,SWT.V_SCROLL | SWT.WRAP | SWT.MULTI| SWT.READ_ONLY);\n}\n", "nl": "Create the TextViewer"}
+{"code": "public boolean isApplicable(){\n  return true;\n}\n", "nl": "is the command currently applicable? Used to set enable state of command"}
+{"code": "public void enableLabels(Collection<String> labels){\n  disabledLabels.removeAll(labels);\n}\n", "nl": "enable the named labels"}
+{"code": "public boolean mustAlias(SootField field1,SootField field2){\n  return field1 == field2;\n}\n", "nl": "Gets whether the two fields must always point to the same runtime object"}
+{"code": "public boolean isSource(){\n  return this.sinkSource == SinkSource.Source || this.sinkSource == SinkSource.Both;\n}\n", "nl": "Checks whether this definition models a source"}
+{"code": "private boolean readyToShow(){\n  return (getFile() != null && mAccount != null && mLayout == R.layout.file_details_fragment);\n}\n", "nl": "Checks if the fragment is ready to show details of a OCFile"}
+{"code": "public static void clearCommKey(AirMapFlight flight,final AirMapCallback<Void> listener){\n  String url=String.format(flightEndCommUrl,flight.getFlightId());\n  AirMap.getClient().post(url,new VoidCallback(listener));\n}\n", "nl": "Stop receiving notifications for traffic alerts"}
+{"code": "public boolean isApplicable(){\n  return true;\n}\n", "nl": "is the command currently applicable? Used to set enable state of command"}
+{"code": "public static Drawable bitmapToDrawable(Bitmap bitmap){\n  return bitmap == null ? null : new BitmapDrawable(bitmap);\n}\n", "nl": "convert Bitmap to Drawable"}
+{"code": "private boolean isChildService(Operation op){\n  String path=op.getUri().getPath();\n  return !path.equals(getParentPath(op));\n}\n", "nl": "Is the current service a child service"}
+{"code": "public void mergeWith(DistributionDocument tpData,double fLearningRate){\n}\n", "nl": "TODO: Document"}
 {"code": "public void onActivityResult(int requestCode,int resultCode,Intent data){\n  for (  Map.Entry<PlatformType,SSOHandler> entry : mMapSSOHandler.entrySet()) {\n    entry.getValue().onActivityResult(requestCode,resultCode,data);\n  }\n}\n", "nl": "actvitiy result"}
 {"code": "String completedLedgerZNode(long firstTxId,long lastTxId,long logSegmentSeqNo){\n  return String.format(\"%s/%s\",logMetadata.getLogSegmentsPath(),completedLedgerZNodeName(firstTxId,lastTxId,logSegmentSeqNo));\n}\n", "nl": "Get the znode path for a finalize ledger"}
 {"code": "public void actionPerformed(ActionEvent ev){\n}\n", "nl": "action to be performed"}

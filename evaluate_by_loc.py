@@ -15,28 +15,27 @@ DATASET_PATH = [
 
 
 if __name__ == '__main__':
-    code_train, comment_train, code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_data()
+    train_data = read_train_pkl()
+    encoder, decoder = create_model(
+        train_data['code_voc_size'],
+        train_data['com_voc_size'],
+        train_data['max_length_code']
+    )
+    encoder, decoder = restore_model(encoder, decoder)
 
-    encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
-    
-    encoder, decoder = read_model(encoder, decoder)
-    
-    
-    print('mode:', MODE, ', arch:', ARCH)
+    print('arch:', ARCH)
     print("Reading model...")
-    
 
-    checkpoint_dir = getCheckpointDir()
-    f_parameter = open(checkpoint_dir+"/performance_by_loc", "a")
+    checkpoint_dir = get_checkpoint_dir()
+    log_file = open(checkpoint_dir+"/performance_by_loc", "a")
     for index, dataset in enumerate(DATASET_PATH):
-        test_inputs, test_outputs = read_testset(dataset)
-        f_parameter.write('LOC:'+str(index*10)+'_'+str(index*10+10)+'\n')
+        test_data = read_testset(path=dataset)
+        log_file.write('LOC:'+str(index*10)+'_'+str(index*10+10)+'\n')
         print('\nLOC:'+str(index*10)+'_'+str(index*10+10))
         for method in PREDICT_METHOD_LIST:
-            f_parameter.write('    '+method+'\n')
-            f_parameter.flush()
+            log_file.write('    '+method+'\n')
+            log_file.flush()
             print(method+'\n')
-            exception = 0
             if method == 'beam_3' or method == 'beam_5':
                 beam_k = int(method.split('_')[1])
             else:
@@ -46,18 +45,23 @@ if __name__ == '__main__':
             for metric in METRIC_LIST:
                 total_score[metric] = 0
 
-            for index, test in enumerate(tqdm(test_inputs)):
-                predict, exception = integrated_prediction(test_inputs[index], encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception)
+            for data in tqdm(test_data):
+                predict = integrated_prediction(
+                    data['code'],
+                    encoder,
+                    decoder,
+                    train_data,
+                    beam_k,
+                    method,
+                )
                 for metric in METRIC_LIST:
-                    score = integrated_score(metric, test_outputs[index], predict)
+                    score = integrated_score(metric, data['comment'], predict)
                     total_score[metric] += score
 
             for metric in METRIC_LIST:
-                total_score[metric] = total_score[metric] / len(test_inputs)
-                f_parameter.write('        '+metric+"="+str(round(total_score[metric], 4))+"\n")
-                f_parameter.flush()
+                total_score[metric] = total_score[metric] / len(test_data)
+                log_file.write('        '+metric+"="+str(round(total_score[metric], 4))+"\n")
+                log_file.flush()
                 print(metric+"="+str(round(total_score[metric], 4)))
 
-            print("number of exception: ", exception, '\n')
-
-    f_parameter.close()
+    log_file.close()

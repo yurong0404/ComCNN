@@ -1,460 +1,245 @@
-import javalang
+import copy
 import json
-import re
-import time
-import nltk
-#nltk.download('punkt')
-import numpy as np
-import pickle
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
-import matplotlib.pyplot as plt
 import math
+import os
+import pickle
+import re
+import javalang
+import nltk
+import numpy as np
+import tensorflow as tf
 from config import *
 from model import *
 from rouge_score import rouge_scorer
-from tqdm import tqdm
-
-    
-    
-'''
-Function: 
-    Input the root of AST and the deep of the tree, 
-    it will filter the null value and return the list of SBT (structural-based travesal) and print the tree structure
-'''
-def parse_tree(root, deep):
-    seq = []
-    seq.extend(['(', str(root).split('(')[0]])
-    #print('\t'*(deep)+str(root).split('(')[0])    # show node name
-    if not hasattr(root, 'attrs'):  # error-handling
-        return []
-    for attr in root.attrs:
-        if eval('root.%s' % attr) in [None, [], "", set(), False]:    # filter the null attr
-            continue
-        elif isinstance(eval('root.%s' % attr), list):
-            x = eval('root.%s' % attr)
-            if not all(elem in x for elem in [None, [], "", set(), False]):    # if not all elements in list are null
-                seq.extend(['(',attr])
-                #print('\t'*(deep+1)+attr)
-                #deep += 1
-                for i in eval('root.%s' % attr):    # recursive the list
-                    if i is None or isinstance(i, str):    # perhaps it has None value in the list
-                        continue
-                    #deep += 1
-                    seq.extend(parse_tree(i, deep))
-                    
-                    #deep -= 1
-                #deep -= 1
-                seq.extend([')',attr])
-        elif 'tree' in str(type(eval('root.%s' % attr))):    #if the attr is one kind of Node, recursive the Node
-            seq.extend(['(',attr])
-            #print('\t'*(deep+1)+attr)
-            #deep += 2
-            seq.extend(parse_tree(eval('root.%s' % attr), deep))
-            #deep -= 2
-            seq.extend([')',attr])
-        else:
-            seq.extend(['(','<'+str(attr)+'>_'+str(eval('root.%s' % attr)),')','<'+str(attr)+'>_'+str(eval('root.%s' % attr))])
-            #exec("print('\t'*(deep+1)+attr+': '+str(root.%s))" % attr)    #it must be normal attribute
-    seq.extend([')', str(root).split('(')[0]])
-    return seq
 
 
-'''
-Usage:
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# nltk.download('punkt')
+
+
+def split_identifier(identifier: str):
+    """
+    Usage:
     1. "camelCase" -> ["camel", "Case"]
     2. "snake_case" -> ["snake", "_", "case"]
     3. "normal" -> ["normal"]
-'''
-def split_identifier(id_token: str):
-    if  "_" in id_token:
-        return id_token.split("_")
-    elif id_token != id_token.lower() and id_token != id_token.upper():
+    """
+    if "_" in identifier:
+        return identifier.split("_")
+    elif identifier != identifier.lower() and identifier != identifier.upper():
         # regular expression for camelCase
-        matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', id_token)
+        matches = re.finditer(
+            '.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)',
+            identifier
+        )
         return [m.group(0) for m in matches]
-    else:
-        return [id_token]
-
-def split_identifier_hybrid_deepcom(id_token: str):
-    if id_token != id_token.lower() and id_token != id_token.upper():
-        # regular expression for camelCase
-        matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', id_token)
-        return [m.group(0) for m in matches]
-    else:
-        return [id_token]
-
-'''
-Usage:
-    Transform the token to the index in vocabulary
-    ['<START>', '<Modifier>', 'public', ..., '<Separator>', ';', '<Separator>', '}', '<END>']
-    => [0, 7, 8, ..., 14, 29, 14, 30, 1]
-'''
-def token2index(lst: list, voc: list) -> list:
-    for index, seq in enumerate(tqdm(lst)):
-        seq_index = []
-        for token in seq:
-            seq_index.append(voc.index(token))
-        lst[index] = seq_index
-    return lst
+    return [identifier]
 
 
-def pad_sequences(lst: list, pad_data: int):
-    maxlen = max(len(x) for x in lst)
-    for index, seq in enumerate(tqdm(lst)):
-        lst[index].extend([pad_data] * (maxlen-len(seq)))
-    return np.array(lst)
-
-'''
-Return shape:
-    [None, batch_sz, None]
-Example:
-    a = [1,2,3,4,5,6,7,8,9,10]
-    a = getBatch(x=a, batch_sz=3)
-    a
-    ---output---
-    [[1,2,3], [4,5,6], [7,8,9]]
-'''
-def getBatch(x: list, batch_sz: int):
+def get_batch(inp: list, batch_sz: int):
+    """
+    Return shape:
+        [None, batch_sz, None]
+    Example:
+        a = [1,2,3,4,5,6,7,8,9,10]
+        a = getBatch(inp=a, batch_sz=3)
+        ---output---
+        [[1,2,3], [4,5,6], [7,8,9]]
+    """
     dataset = []
-    while(len(x)>=batch_sz):
-        dataset.append(x[:batch_sz])
-        x = x[batch_sz:]
-    if type(x) == np.ndarray:
+    while len(inp) >= batch_sz:
+        dataset.append(inp[:batch_sz])
+        inp = inp[batch_sz:]
+    if isinstance(inp, np.ndarray):
         return np.array(dataset)
-    elif type(x) == list:
-        return dataset
-    
+    return dataset
+
+
 def ngram(words, n):
     return list(zip(*(words[i:] for i in range(n))))
 
 
-def code_to_index(inputs, code_voc, max_length_inp):
-    if MODE=="CODE-NN" or MODE == "ComCNN":
-        if len(inputs) >= max_length_inp:
-            inputs = inputs[:max_length_inp-1]
-        for index, token in enumerate(inputs):
-            if token not in code_voc:
-                inputs[index] = code_voc.index('<UNK>')
-            else:
-                inputs[index] = code_voc.index(token)
-        inputs += [code_voc.index('<PAD>')] * (max_length_inp - len(inputs))
-        inputs = np.array(inputs)
-        inputs = tf.expand_dims(inputs, 0)
-                
-    elif MODE=="DeepCom":
-        if len(inputs) >= max_length_inp:
-            inputs = inputs[:max_length_inp-1]
-        typename = ['<modifiers>', '<member>', '<value>', '<name>', '<operator>', '<qualifier>']
-        
-        for index, token in enumerate(inputs):
-            if token not in code_voc:
-                tmp = token.split('_')
-                if len(tmp) > 1 and tmp[0] in typename:
-                    inputs[index] = code_voc.index(tmp[0])
-                else:
-                    inputs[index] = code_voc.index("<UNK>")
-            else:
-                inputs[index] = code_voc.index(token)
-
-        inputs += [code_voc.index('<PAD>')] * (max_length_inp - len(inputs))
-        inputs = np.array(inputs)
-        inputs = tf.expand_dims(inputs, 0)
-    
-    elif MODE=="Hybrid-DeepCom":
-        CODE = 0
-        AST = 1
-        # ========== code tokenize data ==========
-        if len(inputs[CODE]) >= max_length_inp[CODE]:
-            inputs[CODE] = inputs[CODE][:max_length_inp[CODE]-1]
-        
-        for index, token in enumerate(inputs[CODE]):
-            if token not in code_voc[CODE]:                
-                inputs[CODE][index] = code_voc[CODE].index('<UNK>')
-            else:
-                inputs[CODE][index] = code_voc[CODE].index(token)
-
-        inputs[CODE] += [code_voc[CODE].index('<PAD>')] * (max_length_inp[CODE] - len(inputs[CODE]))
-        inputs[CODE] = np.array(inputs[CODE])
-
-        # ========== ast data ===========
-        if len(inputs[AST]) >= max_length_inp[AST]:
-            inputs[AST] = inputs[AST][:max_length_inp[AST]-1]
-
-        for index, token in enumerate(inputs[AST]):
-            if token not in code_voc[AST]:
-                inputs[AST][index] = code_voc[AST].index('<UNK>')
-            else:
-                inputs[AST][index] = code_voc[AST].index(token)
-
-        inputs[AST] += [code_voc[AST].index('<PAD>')] * (max_length_inp[AST] - len(inputs[AST]))
-        inputs[AST] = np.array(inputs[AST])
-        inputs = [inputs]
-    
-    return inputs
-
 def code_tokenize(code):
     inputs = []
-    if MODE == "ComCNN":
-        tokens_parse = javalang.tokenizer.tokenize(code)
-        for token in tokens_parse:    # iterate the tokens of the sentence
-            token = str(token).split(' ')
-            splitted_id = split_identifier(token[1].strip('"'))    # split the camelCase and snake_case
-            inputs.extend(splitted_id)
-        inputs.insert(0, '<START>')
-        inputs.append('<END>')
-
-    elif MODE == "DeepCom":
-        tree = javalang.parse.parse('class aa {'+code+'}')
-        _, node = list(tree)[2]    # 前兩個用來篩掉class aa{ }的部分
-        inputs = parse_tree(node, 0)
-        if len(inputs) == 0:   # error-handling due to dirty data
-            return []
-        #inputs.insert(0, '<START>')
-        #inputs.append('<END>')
-    
-    elif MODE == "CODE-NN":
-        tokens_parse = javalang.tokenizer.tokenize(code)
-        for token in tokens_parse:
-            token = str(token).split(' ')
-            token[1] = token[1].strip('"')
-            inputs.append(token[1])
-        inputs.insert(0, '<START>')
-        inputs.append('<END>')
-    
-    elif MODE == "Hybrid-DeepCom":
-        code_inps = []
-        ast_inps = []
-        inputs = []
-        # ===== code inps part =====
-        tokens_parse = javalang.tokenizer.tokenize(code)
-        for token in tokens_parse:    # iterate the tokens of the sentence
-            token = str(token).split(' ')
-            splitted_id = split_identifier_hybrid_deepcom(token[1].strip('"'))    # split the camelCase
-            code_inps.extend(splitted_id)
-        # ===== ast inps part =====
-        
-        tree = javalang.parse.parse('class aa {'+code+'}')
-        _, node = list(tree)[2]    # 前兩個用來篩掉class aa{ }的部分
-        ast_inps = parse_tree(node, 0)
-        if len(ast_inps) == 0:   # error-handling due to dirty data
-            return [[],[]]
-        
-        code_inps.insert(0, '<START>')
-        code_inps.append('<END>')
-        ast_inps.insert(0, '<START>')
-        ast_inps.append('<END>')
-        inputs.append(code_inps)
-        inputs.append(ast_inps)
-    #return code_inps
+    tokens_parse = javalang.tokenizer.tokenize(code)
+    for token in tokens_parse:
+        token = str(token).split(' ')
+        # split the camelCase and snake_case
+        splitted_id = split_identifier(token[1].strip('"'))
+        inputs.extend(splitted_id)
+    inputs.insert(0, '<START>')
+    inputs.append('<END>')
     return inputs
 
 
-'''
-用途：把一個二維的array做機率正規化
-例如：[[3,4,5],[1,2,3]] -> [[0.25, 0.33, 0.416], [0.167, 0.333, 0.5]]
-'''
-def distribution(arr):
-    new_arr = []
-    for i in arr:
-        tmp = []
-        total = sum(i)
-        for x in i:
-            tmp.append(x/total)
-        new_arr.append(tmp)
-    return np.array(new_arr)
+def token_to_index(seq, voc):
+    """
+    ['public', 'void', ... '<END>'] -> [55, 66, ..., 2]
+    """
+    seq_index = []
+    for token in seq:
+        if token not in voc:
+            seq_index.append(voc.index('<UNK>'))
+        else:
+            seq_index.append(voc.index(token))
+    return seq_index
 
 
-def enc_output_init_dec_hidden(inputs, encoder, decoder):
-    if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "DeepCom":
-        hidden_h, hidden_c = tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))
-        hidden = [hidden_h, hidden_c]
-        enc_output, enc_hidden_h, enc_hidden_c = encoder(inputs, hidden)
-        dec_hidden = [enc_hidden_h, enc_hidden_c]
-    elif ARCH == "Hybrid-DeepCom":
-        hidden = tf.zeros((1, encoder.enc_units))
-        enc_output, dec_hidden = encoder(inputs, hidden)
-    elif ARCH == "cnnbilstm_lstm":
-        hidden = [tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units)), \
-                    tf.zeros((1, encoder.enc_units)), tf.zeros((1, encoder.enc_units))]
-        enc_output, enc_forward_h, enc_forward_c = encoder(inputs, hidden)
-        dec_hidden = [enc_forward_h, enc_forward_c]
-    elif ARCH == "CODE-NN":
-        enc_output, enc_hidden_h, enc_hidden_c = tf.zeros((1, UNITS)), tf.zeros((1, UNITS)), tf.zeros((1, UNITS))
-        dec_hidden = [enc_hidden_h, enc_hidden_c]
-    return enc_output, dec_hidden
+def token_zero_padding(seq, voc, max_length):
+    # index of '<PAD>' is 0
+    seq += [voc.index('<PAD>')] * (max_length - len(seq))
+    seq = np.array(seq)
+    return seq
 
-def decode_iterate(decoder, dec_input, dec_hidden, enc_output, code):
-    if ARCH == "lstm_lstm" or ARCH == "cnnlstm_lstm" or ARCH == "cnnbilstm_lstm" or ARCH == "DeepCom":
+
+def greedy_search(code, encoder, decoder, train_data):
+    code = code_tokenize(code)
+    if len(code) >= train_data['max_length_code']:
+        code = code[:train_data['max_length_code']-1]
+    code = token_to_index(code, train_data['code_voc'])
+    code = token_zero_padding(code, train_data['code_voc'], train_data['max_length_code'])
+    code = tf.expand_dims(code, 0)
+    result = ''
+    hidden = encoder.initialize_hidden_state(batch_sz=1)
+    enc_output, enc_hidden_h, enc_hidden_c = encoder(code, hidden)
+    dec_hidden = [enc_hidden_h, enc_hidden_c]
+    dec_input = tf.expand_dims([train_data['comment_voc'].index('<START>')], 1)
+
+    for t in range(train_data['max_length_com']):
         predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, enc_output)
         dec_hidden = [dec_hidden_h, dec_hidden_c]
-    elif ARCH == "CODE-NN":
-        predictions, dec_hidden_h, dec_hidden_c = decoder(dec_input, dec_hidden, code)
-        dec_hidden = [dec_hidden_h, dec_hidden_c]
-    elif ARCH == "Hybrid-DeepCom":
-        predictions, dec_hidden = decoder(dec_input, dec_hidden, enc_output)
-    return predictions, dec_hidden
-    
-def translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ):
-    inputs = code_tokenize(code)
-    inputs = code_to_index(inputs, code_voc, max_length_inp)
-    result = ''
-    enc_output, dec_hidden = enc_output_init_dec_hidden(inputs, encoder, decoder)
-    dec_input = tf.expand_dims([comment_voc.index('<START>')], 1)       
-    
-    for t in range(max_length_targ):
-        predictions, dec_hidden = decode_iterate(decoder, dec_input, dec_hidden, enc_output, inputs)
         predicted_id = tf.argmax(predictions[0]).numpy()
-        if comment_voc[predicted_id] == '<END>':
+        if train_data['comment_voc'][predicted_id] == '<END>':
             return result
-        result += comment_voc[predicted_id] + ' '
+        result += train_data['comment_voc'][predicted_id] + ' '
         # the predicted ID is fed back into the model
         dec_input = tf.expand_dims([predicted_id], 0)
 
     return result
 
 
-def beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, code, width):
-    can_lock = [0] * (width ** 2)
-    can_input = [''] * (width ** 2)
-    can_score = [1] * (width ** 2)
-    can_result = [''] * (width ** 2)
-
+def predict_word_for_each_candidate(pred_info, decoder, enc_output, comment_voc, width):
+    """
+    it is called by beam search,
+    it predicts one words for each of 'width * width' candidates,
+    and also handle the joint scores, hidden states of decorder, etc.
+    """
+    cand_info = []
     for i in range(width):
         for x in range(width):
-            can_score[width*i+x] = score[i]
-            can_result[width*i+x] = result[i]
-        if lock[i] == 1:
-            for x in range(width):
-                can_lock[width*i+x] = 1
+            cand_info += [copy.deepcopy(pred_info[i])]
+
+        if pred_info[i]['end'] is True:
             continue
-        
-        predictions, dec_hidden[i] = decode_iterate(decoder, dec_input[i], dec_hidden[i], enc_output, code)
-            
+
+        predictions, dec_hidden_h, dec_hidden_c = decoder(
+            pred_info[i]['dec_input'],
+            pred_info[i]['dec_hidden'],
+            enc_output
+        )
+        pred_info[i]['dec_hidden'] = [dec_hidden_h, dec_hidden_c]
         predictions = tf.nn.softmax(predictions)
+        # pick out top k new words for each prediction comments
         topk_score = tf.math.top_k(predictions[0], width)[0]
         topk_id = tf.math.top_k(predictions[0], width)[1]
-        
+
         for x in range(width):
-            can_score[width*i+x] *= topk_score[x].numpy()
+            cand_info[width*i+x]['scores'] *= topk_score[x].numpy()
             if comment_voc[topk_id[x].numpy()] == '<END>':
-                can_lock[width*i+x] = 1
+                cand_info[width*i+x]['end'] = True
             else:
-                can_result[width*i+x] += comment_voc[topk_id[x].numpy()] + ' '
-                can_input[width*i+x] = topk_id[x].numpy()
-    return can_lock, can_score, can_result, can_input, dec_hidden
+                cand_info[width*i+x]['gen_comments'] += comment_voc[topk_id[x].numpy()] + ' '
+                cand_info[width*i+x]['dec_input'] = tf.expand_dims([topk_id[x].numpy()], 0)
+                cand_info[width*i+x]['dec_hidden'] = pred_info[i]['dec_hidden']
 
-def beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width):
-    sorted_index = sorted(range(len(can_score)), key=lambda k: can_score[k], reverse=True)[:width]
-    for x in range(width):
-        result[x] = can_result[sorted_index[x]]
-        score[x] = can_score[sorted_index[x]]
-        if can_lock[sorted_index[x]] == 1:
-            lock[x] = 1
-        else:
-            dec_input[x] = tf.expand_dims([can_input[sorted_index[x]]], 0)
-        dec_hidden[x] = dec_hidden[sorted_index[x]//width]
-    return lock, result, score, dec_input, dec_hidden
+    return cand_info, pred_info
 
 
-def beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, width):
-    inputs = code_tokenize(code)
-    inputs = code_to_index(inputs, code_voc, max_length_inp)
+def beam_search(code, encoder, decoder, train_data, width):
+    code = code_tokenize(code)
+    code = token_to_index(code, train_data['code_voc'])
+    code = token_zero_padding(code, train_data['code_voc'], train_data['max_length_code'])
+    code = tf.expand_dims(code, 0)
 
-    enc_output, dec_hidden = enc_output_init_dec_hidden(inputs, encoder, decoder)
-    dec_hidden = [dec_hidden] * width
+    hidden = encoder.initialize_hidden_state(batch_sz=1)
+    enc_output, enc_hidden_h, enc_hidden_c = encoder(code, hidden)
+    # pred_info : a list having 'width' elements, each element represent one prediction comment
+    pred_info = []
+    for i in range(width):
+        pred_info.append({
+            'gen_comments': '',
+            'scores': 1,
+            'end': False,  # used to determine whether the prediction comments end
+            'dec_input': tf.expand_dims([train_data['comment_voc'].index('<START>')], 1),
+            'dec_hidden': [enc_hidden_h, enc_hidden_c]
+        })
 
-    dec_input = [tf.expand_dims([comment_voc.index('<START>')], 1)] * width
-    
-    result = [''] * width
-    score = [1] * width
-    lock = [0] * width
-    
-    for t in range(max_length_targ):
-        can_lock, can_score, can_result, can_input, dec_hidden = beam_search_predict_word(lock, score, result, decoder, dec_input, dec_hidden, enc_output, comment_voc, inputs, width)
-
+    for t in range(train_data['max_length_com']):
+        # cand_info : a list having 'width * width' elements
+        cand_info, pred_info = predict_word_for_each_candidate(
+            pred_info,
+            decoder,
+            enc_output,
+            train_data['comment_voc'],
+            width
+        )
+        # because the candidate of 1st iteration must be all the same
         if t == 0:
-            result[:width] = can_result[:width]
-            score[:width] = can_score[:width]
-            dec_input = [tf.expand_dims([can_input[x]], 0) for x in range(width)]
+            pred_info = cand_info[:width]
             continue
-        
-        lock, result, score, dec_input, dec_hidden = beam_search_generate_topk_candidate(can_score, can_result, can_lock, can_input, result, score, lock, dec_hidden, dec_input, width)
-        if 0 not in lock:
-            break
-    return result[0]
+        else:
+            sorted_index = sorted(range(width ** 2), key=lambda k: cand_info[k]['scores'], reverse=True)[:width]
+            # pick first 'width' best candidate comments as the temporary predictions
+            for x in range(width):
+                pred_info[x] = cand_info[sorted_index[x]]
+            if False not in [pred_info[x]['end'] for x in range(width)]:
+                break
+    # select the comments with the highest joint scores as prediction
+    return pred_info[0]['gen_comments']
 
 
-# Read the training data:
-def read_pkl():
-    if MODE=="CODE-NN":
-        f = open('./simplified_dataset/train_CODENN_data.pkl', 'rb')
-        code_train, comment_train, code_voc, comment_voc = pickle.load(f)
-        return code_train, comment_train, code_voc, comment_voc
-    elif MODE=="ComCNN":
-        f = open('./simplified_dataset/train_ComCNN_data.pkl', 'rb')
-        code_train, comment_train, code_voc, comment_voc = pickle.load(f)
-        return code_train, comment_train, code_voc, comment_voc
-    elif MODE=="DeepCom":
-        f = open('./simplified_dataset/train_DeepCom_data.pkl', 'rb')
-        code_train, comment_train, code_voc, comment_voc = pickle.load(f)
-        return code_train, comment_train, code_voc, comment_voc
-    elif MODE == "Hybrid-DeepCom":
-        f = open('./simplified_dataset/train_Hybrid-DeepCom_data.pkl', 'rb')
-        code_train, comment_train, code_voc, comment_voc = pickle.load(f)
-        f.close()
-        f = open('./simplified_dataset/train_Hybrid-DeepCom-AST_data.pkl', 'rb')
-        ast_train, _, ast_voc, _ = pickle.load(f)
-        f.close()
-        return code_train, ast_train, comment_train, code_voc, ast_voc, comment_voc
+def read_train_pkl():
+    """
+    return a dict(), having several training data information
+    """
+    f = open('./simplified_dataset/train_ComCNN_data.pkl', 'rb')
+    code_train, comment_train, code_voc, comment_voc = pickle.load(f)
+    code_voc_size = len(code_voc)
+    com_voc_size = len(comment_voc)
+    max_length_code = max(len(t) for t in code_train)
+    max_length_com = max(len(t) for t in comment_train)
+    train_data = {
+        'code': code_train,
+        'comment': comment_train,
+        'code_voc': code_voc,
+        'comment_voc': comment_voc,
+        'code_voc_size': code_voc_size,
+        'com_voc_size': com_voc_size,
+        'max_length_code': max_length_code,
+        'max_length_com': max_length_com
+    }
+    return train_data
+
+
+def read_testset(**kwargs):
+    """
+    return a list of many dicts having 'code' and 'comment' keys
+    """
+    if "path" in kwargs:
+        f = open(kwargs['path'])
     else:
-        print('Error in read_pkl() in util.py')
-        exit(0)
-        return
-
-def read_data():
-    if ARCH == "Hybrid-DeepCom":
-        code_train, ast_train, comment_train, code_voc, ast_voc, comment_voc = read_pkl()  
-        max_length_code = max(len(t) for t in code_train)
-        max_length_ast = max(len(t) for t in ast_train)
-        max_length_inp = [max_length_code, max_length_ast]
-        max_length_targ = max(len(t) for t in comment_train)
-        code_train = [list(a) for a in zip(code_train, ast_train)]
-        vocab_code_size = len(code_voc)
-        vocab_ast_size = len(ast_voc)
-        vocab_inp_size = [vocab_code_size, vocab_ast_size]
-        vocab_tar_size = len(comment_voc)
-        code_voc = [code_voc, ast_voc] 
-        
-    else:
-        code_train, comment_train, code_voc, comment_voc = read_pkl()    
-        vocab_inp_size = len(code_voc)
-        vocab_tar_size = len(comment_voc)
-        max_length_inp = max(len(t) for t in code_train)
-        max_length_targ = max(len(t) for t in comment_train)
-    return code_train, comment_train, code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ
-
-def read_testset(path):
-    f = open(path)
+        f = open('./simplified_dataset/simplified_test.json')
     inputs = f.readlines()
     f.close()
-    test_inputs = []
-    test_outputs = []
+    test_data = []
 
     for pair in inputs:
         pair = json.loads(pair)
-        test_inputs.append(pair['code'])
-        test_outputs.append(pair['nl'])
-    
-    return test_inputs, test_outputs
+        test_data.append({'code': pair['code'], 'comment': pair['nl']})
 
-def open_trainset():
-    f = open('./simplified_dataset/simplified_train.json')
-    return f
+    return test_data
 
 
-#  bleu4 (n=4)
 def bleu(true, pred, n):
     true = nltk.word_tokenize(true)
     pred = nltk.word_tokenize(pred)
@@ -462,39 +247,41 @@ def bleu(true, pred, n):
     r = len(true)
     bp = 1. if c > r else np.exp(1 - r / (c + 1e-10))
     score = 0
-    
+
     for i in range(1, n+1):
         true_ngram = set(ngram(true, i))
         pred_ngram = ngram(pred, i)
-        if len(true_ngram)==0 or len(pred_ngram)==0:
+        if len(true_ngram) == 0 or len(pred_ngram) == 0:
             break
         length = float(len(pred_ngram)) + 1e-10
         count = sum([1. if t in true_ngram else 0. for t in pred_ngram])
         score += math.log(1e-10 + (count / length))
-    score = math.exp(score / n)  #n就是公式的Wn
+    # n就是公式的Wn
+    score = math.exp(score / n)
     bleu = bp * score
     return bleu
 
 
-def TF_IDF(ngram_list, ngram, total_ngram_count):
+def tf_idf(ngram_list, ngram, total_ngram_count):
     count = ngram_list.count(ngram)
     tf = count / total_ngram_count
-    # in the case of our dataset, tf-idf is either (tf*1) or (0* every large number)
+    # in our dataset, tf-idf is either (tf*1) or (0* every large number)
     # so idf=1 results in the same consequence
     idf = 1
     return tf * idf
 
-def CIDEr(true, pred):
+
+def cider(true, pred):
     true = nltk.word_tokenize(true)
     pred = nltk.word_tokenize(pred)
     N = 4
-    CIDEr_score = 0
-    for n in range(1,5):
+    cider_score = 0
+    for n in range(1, 5):
         true_ngram = ngram(true, n)
         pred_ngram = ngram(pred, n)
-        if len(true_ngram)==0 or len(pred_ngram)==0:
+        if len(true_ngram) == 0 or len(pred_ngram) == 0:
             break
-        
+
         total_ngram = true_ngram + pred_ngram
         total_ngram_count_in_cand = 1e-10
         total_ngram_count_in_ref = 1e-10
@@ -502,64 +289,45 @@ def CIDEr(true, pred):
         for t in set(total_ngram):
             total_ngram_count_in_cand += pred_ngram.count(t)
             total_ngram_count_in_ref += true_ngram.count(t)
-        g_cand = [TF_IDF(pred_ngram, t, total_ngram_count_in_cand) for t in set(total_ngram)]
-        g_ref = [TF_IDF(true_ngram, t, total_ngram_count_in_ref) for t in set(total_ngram)]
+        g_cand = [tf_idf(pred_ngram, t, total_ngram_count_in_cand) for t in set(total_ngram)]
+        g_ref = [tf_idf(true_ngram, t, total_ngram_count_in_ref) for t in set(total_ngram)]
 
         # inner product of two list
-        g = sum([a*b for a,b in zip(g_cand, g_ref)])
+        g = sum([a*b for a, b in zip(g_cand, g_ref)])
         abs_cand = sum([a**2 for a in g_cand]) ** 0.5
         abs_ref = sum([a**2 for a in g_ref]) ** 0.5
-        CIDEr_score += (g / (abs_cand * abs_ref)) / N
-    return CIDEr_score
-        
+        cider_score += (g / (abs_cand * abs_ref)) / N
+    return cider_score
 
-def getCheckpointDir():
+
+def get_checkpoint_dir():
     checkpoint_dir = ''
-    
-    if MODE=="ComCNN" and ARCH=="lstm_lstm":
+    if ARCH == "lstm_lstm":
         checkpoint_dir = './training_checkpoints/ComCNN-lstm-lstm'
-    elif MODE=="ComCNN" and ARCH=="cnnlstm_lstm":
+    elif ARCH == "cnnlstm_lstm":
         checkpoint_dir = './training_checkpoints/ComCNN-cnnlstm-lstm'
-    elif MODE=="ComCNN" and ARCH=="cnnbilstm_lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm-avgpooling'
-    elif MODE=="CODE-NN" and ARCH=="CODE-NN":
-        checkpoint_dir = './training_checkpoints/CODENN'
-    elif MODE=="CODE-NN" and ARCH=="lstm_lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-lstm-lstm-no-idsplit'
-    elif MODE=="CODE-NN" and ARCH=="cnnbilstm_lstm":
-        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm-no-idsplit'
-    elif MODE=="DeepCom" and ARCH=="DeepCom":
-        checkpoint_dir = './training_checkpoints/DeepCom'
-    elif MODE=="Hybrid-DeepCom" and ARCH=="Hybrid-DeepCom":
-        checkpoint_dir = './training_checkpoints/Hybrid-DeepCom-800'
+    elif ARCH == "cnnbilstm_lstm":
+        checkpoint_dir = './training_checkpoints/ComCNN-cnnbilstm-lstm'
     else:
-        print('Error: getCheckpointDir')
+        print('Error: get_checkpoint_dir')
         exit(0)
     return checkpoint_dir
 
-def read_model(encoder, decoder):
-    checkpoint_dir = getCheckpointDir()
-    
-    optimizer = tf.optimizers.Adam(learning_rate=1e-3)
-    if ARCH == "CODE-NN":
-        encoder = 0
-        checkpoint = tf.train.Checkpoint(optimizer=optimizer, decoder=decoder)
-    else:
-        checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)
-    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
 
+def restore_model(encoder, decoder):
+    checkpoint_dir = get_checkpoint_dir()
+    optimizer = tf.optimizers.Adam(learning_rate=1e-3)
+    checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)
+    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
     return encoder, decoder
 
-def integrated_prediction(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k, method, exception):
+
+def integrated_prediction(code, encoder, decoder, train_data, beam_k, method):
     if method == 'greedy':
-        predict = translate(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-    elif method=='beam_3' or method=='beam_5':
-        predict = ''
-        try:
-            predict = beam_search(test_input, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, beam_k)
-        except:
-            exception += 1
-    return predict, exception
+        predict = greedy_search(code, encoder, decoder, train_data)
+    elif method == 'beam_3' or method == 'beam_5':
+        predict = beam_search(code, encoder, decoder, train_data, beam_k)
+    return predict
 
 
 def integrated_score(metric, test_output, predict):
@@ -569,30 +337,22 @@ def integrated_score(metric, test_output, predict):
     elif metric == 'BLEU4':
         score = bleu(test_output, predict, 4)
     elif metric == 'CIDEr':
-        score = CIDEr(test_output, predict)
+        score = cider(test_output, predict)
     elif metric == 'ROUGE_L':
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
         score = scorer.score(test_output, predict)['rougeL'].fmeasure
     return score
 
-def create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp):
+
+def create_model(vocab_inp_size, vocab_tar_size, max_length_inp):
     if ARCH == "lstm_lstm":
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        encoder = lstmEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS)
     elif ARCH == "cnnlstm_lstm":
-        encoder = cnnlstmEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE, max_length_inp)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        encoder = cnnlstmEncoder(vocab_inp_size, EMBEDDING_DIM, UNITS, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS)
     elif ARCH == "cnnbilstm_lstm":
-        encoder = cnnbilstmEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE, max_length_inp)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS, BATCH_SIZE)
-    elif ARCH == "CODE-NN":
-        decoder = codennDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE, vocab_inp_size)
-        encoder = decoder
-    elif ARCH == "DeepCom":
-        encoder = Encoder(vocab_inp_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
-    elif ARCH == "Hybrid-DeepCom":
-        encoder = HybridDeepComEncoder(vocab_inp_size[0], vocab_inp_size[1], EMBEDDING_DIM, UNITS, BATCH_SIZE)
-        decoder = HybridDeepComDecoder(vocab_tar_size, EMBEDDING_DIM, UNITS, BATCH_SIZE)
+        encoder = cnnbilstmEncoder(vocab_inp_size, EMBEDDING_DIM, FILTERS, max_length_inp)
+        decoder = Decoder(vocab_tar_size, EMBEDDING_DIM, FILTERS)
 
     return encoder, decoder

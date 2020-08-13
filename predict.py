@@ -8,17 +8,19 @@ RED = "\033[0;31;40m"
 RESET_COLOR = "\033[0m"
 
 if __name__ == '__main__':
-    print("Reading "+MODE+" model...")
-    code_train, comment_train, code_voc, comment_voc, vocab_inp_size, vocab_tar_size, max_length_inp, max_length_targ = read_data()
-    
-    encoder, decoder= create_encoder_decoder(vocab_inp_size, vocab_tar_size, max_length_inp)
-    
-    encoder, decoder = read_model(encoder, decoder)
-    test_inputs, test_outputs = read_testset('./simplified_dataset/simplified_test.json')
+    print("Reading "+ARCH+" model...")
+    train_data = read_train_pkl()
+    encoder, decoder = create_model(
+        train_data['code_voc_size'],
+        train_data['com_voc_size'],
+        train_data['max_length_code']
+    )
+    encoder, decoder = restore_model(encoder, decoder)
+    test_data = read_testset()
 
-    input_type = 0 # 0 for testing set, 1 for custom
+    input_type = 0  # 0 for testing set, 1 for custom
     input_type = int(input("choose the type of input, 0 (testing set) / 1 (custom): "))
-    if input_type != 0 and input_type!=1:
+    if input_type != 0 and input_type != 1:
         print('wrong input')
         exit(0)
     while(1):
@@ -28,17 +30,17 @@ if __name__ == '__main__':
             if index == -1:
                 break
             print(GREEN+"\nCode:"+RESET_COLOR)
-            code = test_inputs[index]
+            code = test_data[index]['code']
             print(code)
-            print(GREEN+"Original comment:\n"+RESET_COLOR+test_outputs[index])
-            predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-            print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-            print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 5)
-            print(GREEN+"\nBeam search prediction (k=5):\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 7)
-            print(GREEN+"\nBeam search prediction (k=7):\n"+RESET_COLOR+ predict)
+            print(GREEN+"Original comment:\n"+RESET_COLOR+test_data[index]['comment'])
+            predict = greedy_search(code, encoder, decoder, train_data)
+            print(GREEN + "\nGreedy search prediction:\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 3)
+            print(GREEN + "\nBeam search prediction (k=3):\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 5)
+            print(GREEN + "\nBeam search prediction (k=5):\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 7)
+            print(GREEN + "\nBeam search prediction (k=7):\n" + RESET_COLOR + predict)
         elif input_type == 1:
             print(GREEN+"\nCode:"+RESET_COLOR)
             lines = []
@@ -49,11 +51,12 @@ if __name__ == '__main__':
                 else:
                     break
             code = '\n'.join(lines)
-            predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
-            print(GREEN+"\nGreedy search prediction:\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 3)
-            print(GREEN+"\nBeam search prediction (k=3):\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 5)
-            print(GREEN+"\nBeam search prediction (k=5):\n"+RESET_COLOR+ predict)
-            predict = beam_search(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ, 7)
-            print(GREEN+"\nBeam search prediction (k=7):\n"+RESET_COLOR+ predict)
+            # predict = translate(code, encoder, decoder, code_voc, comment_voc, max_length_inp, max_length_targ)
+            predict = greedy_search(code, encoder, decoder, train_data)
+            print(GREEN + "\nGreedy search prediction:\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 3)
+            print(GREEN + "\nBeam search prediction (k=3):\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 5)
+            print(GREEN + "\nBeam search prediction (k=5):\n" + RESET_COLOR + predict)
+            predict = beam_search(code, encoder, decoder, train_data, 7)
+            print(GREEN + "\nBeam search prediction (k=7):\n" + RESET_COLOR + predict)
