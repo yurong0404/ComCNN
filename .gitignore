@@ -1,6 +1,4 @@
 *.zip
-*.7z
 DeepCom_data/
-*.pkl
 training_checkpoints/
 simplified_dataset/*.pkl
