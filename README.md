@@ -1,5 +1,10 @@
 # ComCNN
 
+此專案是我在清華資工所的碩士論文<br>
+This is my master thesis project in National Tsing Hua University.<br><br>
+Download PDF: [ComCNN_thesis.pdf](https://github.com/yurong0404/ComCNN/ComCNN_thesis_ieee_conference_version.pdf)
+
+***
 這是一個將程式碼透過深度學習，自動翻譯成註解的研究，目標程式碼以function為單位，而註解會說明該段function的程式邏輯
 
 This is a study that automatically translates the code into comments by using deep learning. The target code are functions, and the comments will explain the function behavior.
