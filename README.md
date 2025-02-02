@@ -2,7 +2,7 @@
 
 此專案是我在清華資工所的碩士論文<br>
 This is my master thesis project in National Tsing Hua University.<br><br>
-Download: [ComCNN_thesis](https://etd.lib.nctu.edu.tw/cgi-bin/gs32/hugsweb.cgi?o=dnthucdr&s=G021070626500.id)
+Download: [ComCNN_thesis](https://etd.lib.nycu.edu.tw/cgi-bin/gs32/hugsweb.cgi/ccd=dqZHAd/record?r1=1&h1=0)
 
 ***
 這是一個將程式碼透過深度學習，自動翻譯成註解的研究，目標程式碼以function為單位，而註解會說明該段function的程式邏輯
